@@ -6,7 +6,7 @@ from .models.schedule import Schedule
 from .models.terminal import Terminal
 from .models.trip import Trip
 from .models.user import User
-
+from .models.registered import Registered
 
 def init_db():
     Base.metadata.create_all(bind=engine)

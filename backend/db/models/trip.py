@@ -25,3 +25,5 @@ class Trip(Base):
     start_time = Column(Time, nullable=True)
     end_time = Column(Time, nullable=True)
 
+    type = Column(String, default = 'regular')
+

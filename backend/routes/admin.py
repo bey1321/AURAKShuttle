@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Request, Response
 
-
+from schema.admin import newDriver, updateDriver
 router  = APIRouter('/admin', tags=['admin'])
 
 
 #driver related routes
 @router.post('/create/driver')
-def createDriver():
-    pass
+def createDriver(newDriver: newDriver):
+    try:
+        pass
+    except:
+        pass
 
 @router.patch('/update/driver')
 def updateDriver():
