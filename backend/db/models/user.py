@@ -7,8 +7,7 @@ import re
 class User(Base):
     __tablename__ = "user"
 
-    id = Column(Integer, autoincrement=True, primary_key=True, index = True)
-    email = Column(String,nullable=False, unique=True)  # add email validater later
+    email = Column(String,nullable=False, unique=True, primary_key=True, index = True)  # add email validater later
     hased_password= Column(String, nullable= False)
     role = Column(String, default='student')
     

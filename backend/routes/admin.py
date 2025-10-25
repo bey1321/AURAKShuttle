@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Request, Response
 
-
+from schema.admin import newDriver, updateDriver
 router  = APIRouter('/admin', tags=['admin'])
 
 
 #driver related routes
 @router.post('/create/driver')
-def createDriver():
-    pass
+def createDriver(newDriver: newDriver):
+    try:
+        pass
+    except:
+        pass
 
 @router.patch('/update/driver')
 def updateDriver():
@@ -47,6 +50,8 @@ def updateTrip():
 def deleteTrip(id: int):
     pass
 
+
+
 #lost and found related routes
 @router.get('/remove_item/{id}')
 def removeItem(id: int):
@@ -60,6 +65,3 @@ def approveItem(id: int):
 def approveItem(id: int):
     pass
 
-#manage students related routes
-
-#manage trip routes
