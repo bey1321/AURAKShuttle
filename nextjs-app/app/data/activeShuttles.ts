@@ -1,0 +1,48 @@
+import { ActiveShuttle } from './types';
+
+export const activeShuttles: ActiveShuttle[] = [
+  {
+    id: 1,
+    route: "Route 1: Main Campus → Khatt",
+    driver: "Ahmed Hassan",
+    status: "Moving",
+    occupancy: 75,
+    passengers: 30,
+    capacity: 40,
+    eta: "5 min",
+    location: "Near RAK Hospital",
+  },
+  {
+    id: 2,
+    route: "Route 2: Khatt → Main Campus",
+    driver: "Mohammed Ali",
+    status: "At Stop",
+    occupancy: 45,
+    passengers: 18,
+    capacity: 40,
+    eta: "Boarding",
+    location: "Khatt Terminal",
+  },
+  {
+    id: 3,
+    route: "Route 3: Main Campus → RAK Mall",
+    driver: "Sara Ahmed",
+    status: "Moving",
+    occupancy: 90,
+    passengers: 36,
+    capacity: 40,
+    eta: "15 min",
+    location: "Sheikh Mohammed Bin Zayed Road",
+  },
+  {
+    id: 4,
+    route: "Route 4: RAK Mall → Main Campus",
+    driver: "Fatima Ibrahim",
+    status: "Idle",
+    occupancy: 0,
+    passengers: 0,
+    capacity: 40,
+    eta: "Not Started",
+    location: "RAK Mall Parking",
+  },
+];
