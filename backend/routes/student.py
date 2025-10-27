@@ -26,7 +26,7 @@ def getTrip(db: db_dependency, user = Depends(get_user)):
         stmt = (
             select(Trip)
             .join(Registered)
-            .where(Registered.email == user.email)
+            .where(Registered.student_id == user.id)
         )
 
         trips = db.scalars(stmt).all()
@@ -91,7 +91,7 @@ async def getTrip(trip_id: int, db: db_dependency, user = Depends(get_user)):
 
         if taken_seats < total_seats:
             new_registration = Registered(
-                student_email  = user.email,
+                student_id  = user.id,
                 trip_id = trip_id
             )
 

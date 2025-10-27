@@ -1,7 +1,7 @@
 from .setup import Base, engine
 from .models.bus import Bus
 from .models.claim import Claim
-from .models.lostfound import LostFound
+from .models.lost_item import LostFound
 from .models.schedule import Schedule
 from .models.terminal import Terminal
 from .models.trip import Trip

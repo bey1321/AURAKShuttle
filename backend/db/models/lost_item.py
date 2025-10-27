@@ -1,10 +1,12 @@
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
 
 from ..setup import Base
 from datetime import datetime, date
-class LostFound(Base):
-    __tablename__ = "lostfound"
+
+
+class Lost(Base):
+    __tablename__ = "lost"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
@@ -13,8 +15,12 @@ class LostFound(Base):
     obj_type = Column(String)
     
     date = Column(Date, default = datetime.now().date())
-    status = Column(String, default = 'found')  #prepare domain for it
+    status = Column(String, default = 'pending')  #prepare domain for it
     
 
-    trip_id = relationship('Trip', back_populates='lost_item')
+    trip = relationship('Trip', back_populates='lost_item')
+    trip_id = Column(Integer,ForeignKey('trip.id'))
+
+    user = relationship('UserLost', back_populates='item')
+
 

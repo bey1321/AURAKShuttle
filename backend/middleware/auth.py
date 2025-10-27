@@ -19,7 +19,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 payload = jwt.decode(token, key = SECRET_KEY, algorithms=[ALGORITHM])
 
                 request.state.user = {
-                    'email': payload.get('email'),
+                    'id': payload.get('id'),
                     'role': payload.get('role')
                 }
             except JWTError:
