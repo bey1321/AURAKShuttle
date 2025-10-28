@@ -38,6 +38,8 @@ class Trip(Base):
 
     type = Column(String, default = 'regular')
 
+    rating = relationship('Rating', back_populates='trip')
+
 
 
 

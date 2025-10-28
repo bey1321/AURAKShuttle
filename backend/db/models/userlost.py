@@ -3,9 +3,9 @@ from sqlalchemy.orm import relationship
 from ..setup import Base
 
 
-class UserFound(Base):
+class UserLost(Base):
 
-    __tablename__ ='userfound'
+    __tablename__ ='userlost'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 

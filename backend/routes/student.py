@@ -11,6 +11,8 @@ from db.models.trip import Trip
 from db.models.user import User
 from db.models.bus import Bus
 
+
+
 router = APIRouter('/trip', tags=['Trip'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
@@ -105,11 +107,5 @@ async def getTrip(trip_id: int, db: db_dependency, user = Depends(get_user)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
 
 
-@router.post('/lost_item')
-def postLostItem():
-    pass
 
-
-@router.post('/claim')
-def postClaim():
-    pass
+#routes related to gps tracking

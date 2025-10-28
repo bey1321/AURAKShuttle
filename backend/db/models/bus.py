@@ -4,8 +4,8 @@ from ..setup import Base
 
 class Bus(Base):
     __tablename__ = "bus"
-    
-    plate_num = Column(String, primary_key=True, nullable= False)
+    id = Column(Integer,primary_key=True,autoincrement=True )
+    plate_num = Column(String,  nullable= False)
     no_seats = Column(Integer)
     #bus model
 

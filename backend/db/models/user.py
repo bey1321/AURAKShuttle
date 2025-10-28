@@ -25,5 +25,6 @@ class User(Base):
     claim = relationship('UserClaim',back_populates='user')
     lost = relationship('UserLost', back_populates='user')
     found = relationship('UserFound', back_populates='user')
+    rating = relationship('Rating', back_populates='user')
 
 
