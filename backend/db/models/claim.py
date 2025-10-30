@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 
 from ..setup import Base
@@ -7,7 +7,10 @@ class Claim(Base):
     __tablename__ = "claim"
 
     id = Column(Integer, autoincrement=True, primary_key=True)
-    stud_id = relationship('User', back_populates='claim')
-    stud_name = Column(String)  # not really necessary to store it here
+    
+    claimer = relationship('UserClaim', back_populates='claim')
+    
     phone = Column(Integer, nullable = False)
-    email = Column(String) # again not necessary
+
+    item = relationship('Found', back_populates='claim')
+    item_id = Column(Integer, ForeignKey('Found.id'))

@@ -55,7 +55,7 @@ async def login(data: UserLoginRequest, db: db_dependency):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Could not validate user')
 
-    token = create_access_token(user.email, user.role, timedelta(minutes=300))
+    token = create_access_token(user.id, user.role, timedelta(minutes=300))
 
     response = JSONResponse(
         content={"access_token": token, "token_type": "bearer"},
@@ -98,8 +98,8 @@ def authenticate_user (  email:str , password: str, db):
     return user
 
 
-def create_access_token(email: str, role: str, expires_delta : timedelta):
-    encode = {'email' : email, 'role': role}
+def create_access_token(id: int, role: str, expires_delta : timedelta):
+    encode = {'id' : id, 'role': role}
     expires = datetime.now() + expires_delta
     encode.update({'exp': expires})
 

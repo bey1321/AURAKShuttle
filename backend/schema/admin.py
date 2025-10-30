@@ -12,3 +12,9 @@ class updateDriver(BaseModel):
     firstName: str = None
     lastName: str = None
     phone: int = None
+
+
+
+class BusCreate(BaseModel):
+    plateNumber: str
+    numSeats: int
