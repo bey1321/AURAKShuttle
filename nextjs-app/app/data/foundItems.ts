@@ -39,14 +39,13 @@ export const foundItems: LostFoundItem[] = [
     reportedBy: "Mohammed Ali",
     contactInfo: "mohammed.ali@aurak.ac.ae",
     createdAt: "2025-10-18T09:45:00Z",
-    claimedInfo: [
-      {
-        claimedBy: "Ahmed Hassan",
-        contactInfo: "ahmed.hassan@aurak.ac.ae",
-        notes: "Verified ownership via student ID and photo confirmation.",
-        date: "2025-10-19T11:00:00Z",
-      },
-    ],
+    claimedInfo: {
+      claimedBy: "Ahmed Hassan",
+      ClaimerSchoolID: "AUR12345",
+      PhoneNumber: "0501234567",
+      SchoolEmail: "ahmed.hassan@aurak.ac.ae",
+      date: new Date("2025-10-19T11:00:00Z"),
+    },
   },
   {
     id: 4,
@@ -60,14 +59,13 @@ export const foundItems: LostFoundItem[] = [
     reportedBy: "Fatima Ibrahim",
     contactInfo: "fatima.ibrahim@aurak.ac.ae",
     createdAt: "2025-10-17T16:20:00Z",
-    claimedInfo: [
-      {
-        claimedBy: "Rania Yusuf",
-        contactInfo: "rania.yusuf@aurak.ac.ae",
-        notes: "Confirmed by describing engraved initials on the bottle.",
-        date: "2025-10-18T09:50:00Z",
-      },
-    ],
+    claimedInfo: {
+      claimedBy: "Rania Yusuf",
+      ClaimerSchoolID: "AUR67890",
+      PhoneNumber: "0507654321",
+      SchoolEmail: "rania.yusuf@aurak.ac.ae",
+      date: new Date("2025-10-18T09:50:00Z"),
+    },
   },
   {
     id: 5,

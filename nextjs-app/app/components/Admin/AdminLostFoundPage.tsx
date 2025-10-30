@@ -32,20 +32,12 @@ export function AdminLostFoundPage() {
   }, []);
 
   // ✅ Approve claim and update item
-  const handleApproveClaim = (item: LostFoundItem, claimIndex: number) => {
+  const handleApproveClaim = (item: LostFoundItem) => {
     if (!item.claimedInfo) return;
 
-    const updatedItems = items.map((i) => {
-      if (i.id === item.id) {
-        const approvedClaim = i.claimedInfo![claimIndex];
-        return {
-          ...i,
-          status: "Claimed",
-          claimedInfo: [approvedClaim], // keep only the approved one
-        };
-      }
-      return i;
-    });
+    const updatedItems = items.map((i) =>
+      i.id === item.id ? { ...i, status: "Claimed" } : i
+    );
 
     setItems(updatedItems);
   };
@@ -104,52 +96,46 @@ export function AdminLostFoundPage() {
           {item.reportedBy}
         </p>
 
-        {/* Pending Claims for Found Items */}
+        {/* Pending Claim for Found Items */}
         {item.type === "Found" &&
           item.status !== "Claimed" &&
-          item.claimedInfo &&
-          item.claimedInfo.length > 0 && (
+          item.claimedInfo && (
             <div className="mt-3">
-              <p className="font-semibold text-sm mb-2">Pending Claims:</p>
-              <div className="flex flex-col gap-2">
-                {item.claimedInfo.map((claim, index) => (
-                  <div
-                    key={index}
-                    className="bg-yellow-50 border-l-4 border-yellow-400 rounded-md p-3 shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="text-xs space-y-1">
-                        <p>
-                          <span className="font-semibold">Claimed By:</span>{" "}
-                          {claim.claimedBy}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Contact:</span>{" "}
-                          {claim.contactInfo}
-                        </p>
-                        {claim.notes && (
-                          <p>
-                            <span className="font-semibold">Notes:</span>{" "}
-                            {claim.notes}
-                          </p>
-                        )}
-                        <p>
-                          <span className="font-semibold">Date:</span>{" "}
-                          {new Date(claim.date).toLocaleString()}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="ml-2 flex-shrink-0"
-                        onClick={() => handleApproveClaim(item, index)}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve
-                      </Button>
-                    </div>
+              <p className="font-semibold text-sm mb-2">Pending Claim:</p>
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-md p-3 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div className="text-xs space-y-1">
+                    <p>
+                      <span className="font-semibold">Claimed By:</span>{" "}
+                      {item.claimedInfo.claimedBy}
+                    </p>
+                    <p>
+                      <span className="font-semibold">School ID:</span>{" "}
+                      {item.claimedInfo.ClaimerSchoolID}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Phone:</span>{" "}
+                      {item.claimedInfo.PhoneNumber}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Email:</span>{" "}
+                      {item.claimedInfo.SchoolEmail}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Date:</span>{" "}
+                      {new Date(item.claimedInfo.date).toLocaleString()}
+                    </p>
                   </div>
-                ))}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-2 flex-shrink-0"
+                    onClick={() => handleApproveClaim(item)}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Approve
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -157,8 +143,7 @@ export function AdminLostFoundPage() {
         {/* Claimed Items — View Claimer Details */}
         {item.type === "Found" &&
           item.status === "Claimed" &&
-          item.claimedInfo &&
-          item.claimedInfo.length > 0 && (
+          item.claimedInfo && (
             <div className="mt-2">
               <Button
                 size="sm"
@@ -196,7 +181,7 @@ export function AdminLostFoundPage() {
   const found = items.filter((i) => i.type === "Found");
 
   return (
-    <div className="p-6 space-y-10 space-x-10">
+    <div className="p-6 space-y-10">
       <div>
         <h1 className="text-2xl font-semibold">Admin Lost & Found</h1>
         <p className="text-muted-foreground">
@@ -284,29 +269,28 @@ export function AdminLostFoundPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedItem &&
-            selectedItem.claimedInfo &&
-            selectedItem.claimedInfo.length > 0 && (
-              <div className="space-y-2 py-4 text-sm">
-                <p>
-                  <strong>Claimed By:</strong>{" "}
-                  {selectedItem.claimedInfo[0].claimedBy}
-                </p>
-                <p>
-                  <strong>Contact:</strong>{" "}
-                  {selectedItem.claimedInfo[0].contactInfo}
-                </p>
-                {selectedItem.claimedInfo[0].notes && (
-                  <p>
-                    <strong>Notes:</strong> {selectedItem.claimedInfo[0].notes}
-                  </p>
-                )}
-                <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(selectedItem.claimedInfo[0].date).toLocaleString()}
-                </p>
-              </div>
-            )}
+          {selectedItem && selectedItem.claimedInfo && (
+            <div className="space-y-2 py-4 text-sm">
+              <p>
+                <strong>Claimed By:</strong>{" "}
+                {selectedItem.claimedInfo.claimedBy}
+              </p>
+              <p>
+                <strong>School ID:</strong>{" "}
+                {selectedItem.claimedInfo.ClaimerSchoolID}
+              </p>
+              <p>
+                <strong>Phone:</strong> {selectedItem.claimedInfo.PhoneNumber}
+              </p>
+              <p>
+                <strong>Email:</strong> {selectedItem.claimedInfo.SchoolEmail}
+              </p>
+              <p>
+                <strong>Date:</strong>{" "}
+                {new Date(selectedItem.claimedInfo.date).toLocaleString()}
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

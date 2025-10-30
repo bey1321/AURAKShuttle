@@ -7,6 +7,7 @@ export const users: User[] = [
     email: "alice.johnson@example.com",
     UserSchoolID: "2023006111",
     role: "student",
+    password: "1234",
   },
   {
     id: 2,
@@ -14,6 +15,7 @@ export const users: User[] = [
     email: "bob.smith@example.com",
     UserSchoolID: "2019005362",
     role: "staff",
+    password: "1234",
   },
   {
     id: 3,
@@ -21,6 +23,7 @@ export const users: User[] = [
     email: "carol.davis@example.com",
     UserSchoolID: "2023006113",
     role: "student",
+    password: "1234",
   },
   {
     id: 4,
@@ -28,12 +31,14 @@ export const users: User[] = [
     email: "david.lee@example.com",
     UserSchoolID: "2019005114",
     role: "staff",
+    password: "1234",
   },
   {
     id: 5,
     name: "Emma Wilson",
-    email: "emma.wilson@example.com", 
+    email: "emma.wilson@example.com",
     UserSchoolID: "2023006115",
     role: "student",
+    password: "1234",
   },
 ];

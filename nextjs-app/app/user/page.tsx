@@ -4,8 +4,8 @@ import { StudentDashboard } from "../components/User/StudentDashboard";
 import { Layout } from "../components/Layout";
 import { RealTimeTracking } from "../components/RealTimeTracking";
 import { ScheduleSearch } from "../components/ScheduleSearch";
-import { LostFoundPage } from "../components/LostFoundPage";
-import { FeedbackPage } from "../components/FeedbackPage";
+import { LostFoundPage } from "../components/User/LostAndFound/LostFoundPage";
+import { FeedbackPage } from "../components/User/FeedBack/FeedbackPage";
 import { useState } from "react";
 
 export default function StudentPage() {
@@ -13,13 +13,13 @@ export default function StudentPage() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
+      case "user-dashboard":
         return <StudentDashboard onNavigate={setCurrentPage} />;
       case "tracking":
         return <RealTimeTracking />;
       case "schedule":
         return <ScheduleSearch />;
-      case "lost-found":
+      case "user-lost-found":
         return <LostFoundPage />;
       case "feedback":
         return <FeedbackPage />;

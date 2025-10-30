@@ -3,9 +3,10 @@
 import { Layout } from "../components/Layout";
 import { AdminDashboard } from "../components/Admin/AdminDashboard";
 import { AdminLostFoundPage } from "../components/Admin/AdminLostFoundPage";
-import { AdminManageTrips } from "../components/Admin/AdminManageTrips";
-import { AdminManageDrivers } from "../components/Admin/AdminManageDrivers";
-import { AdminManageUsers } from "../components/Admin/AdminManageUsers";
+import { AdminManageTrips } from "../components/Admin/ManageTrips/AdminManageTrips";
+import { AdminManageDrivers } from "../components/Admin/ManageDrivers/AdminManageDrivers";
+import { AdminManageUsers } from "../components/Admin/ManageUsers/AdminManageUsers";
+import AdminCreateBus from "../components/Admin/ManageBuses/AdminCreateBus";
 import { RealTimeTracking } from "../components/RealTimeTracking";
 import { useState } from "react";
 
@@ -14,8 +15,10 @@ export default function AdminPage() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
+      case "admin-dashboard":
         return <AdminDashboard />;
+      case "create-bus":
+        return <AdminCreateBus />;
       case "manage-trips":
         return <AdminManageTrips />;
       case "manage-users":
@@ -24,7 +27,7 @@ export default function AdminPage() {
         return <AdminManageDrivers />;
       case "tracking":
         return <RealTimeTracking />;
-      case "lost-found":
+      case "admin-lost-found":
         return <AdminLostFoundPage />;
       default:
         return <AdminDashboard />;

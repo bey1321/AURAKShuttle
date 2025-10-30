@@ -1,128 +1,89 @@
 "use client";
 
-import { Bus, User, Lock } from "lucide-react";
-import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui";
-import React, { useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-interface LoginPageProps {
-  onLogin: (username: string, role: "student" | "driver" | "admin") => void;
-}
-
-export function LoginPage({ onLogin }: LoginPageProps) {
-  const [username, setUsername] = useState("");
+export default function LoginPage({
+  onLogin,
+}: {
+  onLogin: (username: string, role: string) => void;
+}) {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"student" | "driver" | "admin">("student");
+  const [message, setMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username && password) {
-      onLogin(username, selectedRole);
+
+    // Mock login check
+    if (email === "student1@test.com" && password === "1234") {
+      onLogin("Student One", "student");
+      router.push("/");
+    } else if (email === "admin@test.com" && password === "1234") {
+      onLogin("Admin User", "admin");
+      router.push("/");
+    } else if (email === "driver@test.com" && password === "1234") {
+      onLogin("Driver User", "driver");
+      router.push("/");
+    } else {
+      setMessage("Invalid credentials");
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-full mb-4">
-            <Bus className="w-10 h-10 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
+        <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+          Welcome Back
+        </h2>
+
+        <form className="space-y-4" onSubmit={handleLogin}>
+          {message && (
+            <p className="text-red-500 text-sm text-center">{message}</p>
+          )}
+
+          <div>
+            <label className="block text-gray-700 mb-1" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
+              required
+            />
           </div>
-          <h1 className="text-primary">AURAK Campus Shuttle Tracker</h1>
-          <p className="text-muted-foreground mt-2">Sign in to continue</p>
-        </div>
 
-        {/* Login Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Welcome Back</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Username */}
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 bg-input-background"
-                    required
-                  />
-                </div>
-              </div>
+          <div>
+            <label className="block text-gray-700 mb-1" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
+              required
+            />
+          </div>
 
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-input-background"
-                    required
-                  />
-                </div>
-              </div>
+          <button
+            type="submit"
+            className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-dark transition"
+          >
+            Login
+          </button>
+        </form>
 
-              {/* Role Selection */}
-              <div className="space-y-2">
-                <Label>Select Role</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    type="button"
-                    variant={selectedRole === "student" ? "default" : "outline"}
-                    onClick={() => setSelectedRole("student")}
-                    className="w-full"
-                  >
-                    Student
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={selectedRole === "driver" ? "default" : "outline"}
-                    onClick={() => setSelectedRole("driver")}
-                    className="w-full"
-                  >
-                    Driver
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={selectedRole === "admin" ? "default" : "outline"}
-                    onClick={() => setSelectedRole("admin")}
-                    className="w-full"
-                  >
-                    Admin
-                  </Button>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <Button type="submit" className="w-full">
-                Sign In
-              </Button>
-
-              {/* Forgot Password */}
-              <div className="text-center">
-                <a href="#" className="text-sm text-primary hover:underline">
-                  Forgot password?
-                </a>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          American University of Ras Al Khaimah
+        <p className="mt-6 text-center text-gray-500 text-sm">
+          Demo credentials: <br />
+          <span className="font-mono">student1@test.com / 1234</span>,{" "}
+          <span className="font-mono">driver@test.com / 1234</span>,{" "}
+          <span className="font-mono">admin@test.com / 1234</span>
         </p>
       </div>
     </div>

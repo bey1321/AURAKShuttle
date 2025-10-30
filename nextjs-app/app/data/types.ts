@@ -18,7 +18,33 @@ export interface User {
   email: string;
   UserSchoolID: string;
   role: "student" | "staff";
-  // phone: string;
+  password: string;
+}
+
+export interface Admin{
+  id:string;
+  name: string;
+  email: string;
+  role: "admin";
+  password: string;
+}
+
+export interface Driver {
+  id: number;
+  name: string;
+  email: string;
+  status: "Active" | "Offline";
+  trips: number;
+  rating: number;
+  password: string;
+}
+
+export interface Claim {
+  claimedBy: string;
+  ClaimerSchoolID: string;
+  PhoneNumber: string;
+  SchoolEmail: string;
+  date: Date;
 }
 
 export interface LostFoundItem {
@@ -33,12 +59,7 @@ export interface LostFoundItem {
   reportedBy: string;
   contactInfo?: string;
   createdAt: string;
-  claimedInfo?: {
-    claimedBy: string;
-    contactInfo: string;
-    notes: string;
-    date: string;
-  }[];
+  claimedInfo?: Claim;
 }
 
 export interface ActiveShuttle {
@@ -55,37 +76,36 @@ export interface ActiveShuttle {
 
 export interface Trip {
   id: number;
-  route: string;
-  driver: string;
-  bus: string;
-  time: string;
+  date: string; // use string for easier JSON mock data
+  schedule: string; // e.g. "Morning Shuttle"
   status: "Active" | "Upcoming" | "In Progress" | "Completed";
+  bus: string;
+  driver: string;
+  startTerminal: string;
+  stopTerminal: string;
+  startTime: string;
+  endTime: string;
+  ETA?: string; // optional
+  type: "regular" | "academic" | "sport" | "Student Life Event";
   passengers: number;
-  // date: Date;
-  // schedule: string;
-  // startTerminal: string;
-  // stopTerminal: string;
-  // ETA: TimeRanges;
-  // startTime: TimeRanges;
-  // endTime: TimeRanges;
 }
+
 
 // export interface Terminal {
 //   terminal: string;
 //   city: string;
 // }
 
-// export interface Bus {
-//   plateNumber: string;
-//   numberOfSeats: number;
-// }
-
-export interface Driver {
-  id: number;
-  name: string;
-  status: "Active" | "Offline";
-  trips: number;
-  rating: number;
+export interface Bus {
+  busID: number;
+  plateNumber: string;
+  numberOfSeats: number;
+  model: string;
+  manufacturer: string;
+  year: number;
+  fuelType: "Diesel" | "Electric" | "Hybrid" | "Petrol";
+  status: "Active" | "UnderMaintenance" | "Inactive";
+  assignment: "Assigned" | "Unassigned";
 }
 
 export interface Notification {

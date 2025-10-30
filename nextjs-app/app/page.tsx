@@ -1,5 +1,8 @@
-import { RoleSelector } from "./components";
+// app/page.tsx
+"use client";
 
-export default function Home() {
-  return <RoleSelector />;
+import App from "./App";
+
+export default function Page() {
+  return <App />;
 }

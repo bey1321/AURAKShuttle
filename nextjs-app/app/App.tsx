@@ -1,18 +1,33 @@
 "use client";
 
 import React, { useState } from "react";
-import { LoginPage } from "./components/LoginPage";
-import { Layout, StudentDashboard, DriverDashboard, AdminDashboard, LostFoundPage, RealTimeTracking, ScheduleSearch, DriverTrips, FeedbackPage } from "./components";
-
+import LoginPage from "./components/LoginPage";
+import {
+  Layout,
+  StudentDashboard,
+  DriverDashboard,
+  AdminDashboard,
+  LostFoundPage,
+  RealTimeTracking,
+  ScheduleSearch,
+  DriverTrips,
+  AdminManageTrips,
+  AdminManageUsers,
+  AdminManageDrivers,
+  AdminLostFoundPage,
+} from "./components";
+import AdminCreateBus from "./components/Admin/ManageBuses/AdminCreateBus";
+import FeedbackPage from "./components/User/FeedBack/FeedbackPage"
 
 type UserRole = "student" | "driver" | "admin";
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Start as logged in
-  const [userRole, setUserRole] = useState<UserRole>("student");
-  const [userName, setUserName] = useState("Demo User"); // Set default user
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Start as logged out
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [userName, setUserName] = useState("");
   const [currentPage, setCurrentPage] = useState("dashboard");
 
+  // Handle login and set role automatically
   const handleLogin = (username: string, role: UserRole) => {
     setUserName(username);
     setUserRole(role);
@@ -23,126 +38,106 @@ export default function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserName("");
+    setUserRole(null);
     setCurrentPage("dashboard");
   };
 
-  // Skip login page for development
-  // if (!isLoggedIn) {
-  //   return <LoginPage onLogin={handleLogin} />;
-  // }
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   const renderPage = () => {
-    // For demo purposes, showing all dashboards in tabs
-    // In production, this would be based on user navigation
-    return (
-      <div className="space-y-6">
-        {/* Navigation Tabs for Demo */}
-        <div className="bg-card border-b border-border p-4">
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setCurrentPage("dashboard")}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                currentPage === "dashboard"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setCurrentPage("tracking")}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                currentPage === "tracking"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
-              }`}
-            >
-              Live Tracking
-            </button>
-            <button
-              onClick={() => setCurrentPage("schedule")}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                currentPage === "schedule"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
-              }`}
-            >
-              Schedule
-            </button>
-            <button
-              onClick={() => setCurrentPage("lost-found")}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                currentPage === "lost-found"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
-              }`}
-            >
-              Lost & Found
-            </button>
-            {/* Role switcher for demo */}
-            <div className="ml-auto flex gap-2">
-              <button
-                onClick={() => setUserRole("student")}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  userRole === "student"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground"
-                }`}
-              >
-                Student View
-              </button>
-              <button
-                onClick={() => setUserRole("driver")}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  userRole === "driver"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground"
-                }`}
-              >
-                Driver View
-              </button>
-              <button
-                onClick={() => setUserRole("admin")}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  userRole === "admin"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground"
-                }`}
-              >
-                Admin View
-              </button>
-            </div>
-          </div>
-        </div>
+    // Dashboard based on role
+    if (currentPage === "dashboard") {
+      switch (userRole) {
+        case "student":
+          return <StudentDashboard onNavigate={setCurrentPage} />;
+        case "driver":
+          return <DriverDashboard />;
+        case "admin":
+          return <AdminDashboard />;
+        default:
+          return null;
+      }
+    }
 
-        {/* Page Content */}
-        {currentPage === "dashboard" && (
-          <>
-            {userRole === "student" && <StudentDashboard onNavigate={setCurrentPage} />}
-            {userRole === "driver" && <DriverDashboard />}
-            {userRole === "admin" && <AdminDashboard />}
-          </>
-        )}
-        {currentPage === "tracking" && <RealTimeTracking />}
-        {currentPage === "schedule" && <ScheduleSearch />}
-        {currentPage === "lost-found" && <LostFoundPage />}
-        {currentPage === "my-trips" && <DriverTrips />}
-        {currentPage === "manage-trips" && <AdminDashboard />}
-        {currentPage === "manage-users" && <AdminDashboard />}
-        {currentPage === "send-alert" && <DriverDashboard />}
-        {currentPage === "feedback" && <FeedbackPage />}
-      </div>
-    );
+    switch (currentPage) {
+      /** -----------------------------
+       *  Admin Pages
+       * ----------------------------- */
+      case "admin-dashboard":
+        return <AdminDashboard />;
+
+      case "create-bus":
+        return userRole === "admin" ? <AdminCreateBus /> : null;
+
+      case "manage-trips":
+        return userRole === "admin" ? <AdminManageTrips /> : null;
+
+      case "manage-users":
+        return userRole === "admin" ? <AdminManageUsers /> : null;
+
+      case "manage-drivers":
+        return userRole === "admin" ? <AdminManageDrivers /> : null;
+
+      case "admin-lost-found":
+        return userRole === "admin" ? <AdminLostFoundPage /> : null;
+
+      /** -----------------------------
+       *  Driver Pages
+       * ----------------------------- */
+      case "driver-dashboard":
+        return userRole === "driver" ? <DriverDashboard /> : null;
+
+      case "my-trips":
+        return userRole === "driver" ? <DriverTrips /> : null;
+
+      case "send-alert":
+        return userRole === "driver" ? <DriverDashboard /> : null; // (or <SendAlertPage /> if you have one)
+
+      /** -----------------------------
+       *  Student Pages
+       * ----------------------------- */
+      case "user-dashboard":
+        return userRole === "student" ? (
+          <StudentDashboard onNavigate={setCurrentPage} />
+        ) : null;
+
+      case "user-lost-found":
+        return userRole === "student" ? <LostFoundPage /> : null;
+
+      /** -----------------------------
+       *  Shared Pages
+       * ----------------------------- */
+      case "tracking":
+        return <RealTimeTracking />;
+
+      case "schedule":
+        return <ScheduleSearch />;
+
+      case "feedback":
+        return <FeedbackPage />;
+
+      /** -----------------------------
+       *  Default Page
+       * ----------------------------- */
+      default:
+        // fall back to correct dashboard per role
+        if (userRole === "admin") return <AdminDashboard />;
+        if (userRole === "driver") return <DriverDashboard />;
+        return <StudentDashboard onNavigate={setCurrentPage} />;
+    }
   };
 
   return (
-    <Layout 
-      userRole={userRole} 
-      userName={userName} 
+    <Layout
+      userRole={userRole!}
+      userName={userName}
       onLogout={handleLogout}
       onNavigate={setCurrentPage}
       currentPage={currentPage}
-      children={renderPage()}
-    />
+    >
+      {renderPage()}
+    </Layout>
   );
 }

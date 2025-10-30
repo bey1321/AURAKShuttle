@@ -11,7 +11,7 @@ export default function DriverPage() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
+      case "driver-dashboard":
         return <DriverDashboard />;
       case "my-trips":
         return <DriverTrips />;

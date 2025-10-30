@@ -7,8 +7,10 @@ export { trips, assignedTrips, todayTrips, upcomingTrips } from './trips';
 export { drivers } from './drivers';
 export { notifications } from './notifications';
 export { recentTrips, myFeedback } from './feedback';
-export { routes } from './routes';
+export { routes } from './route';
 export { users } from './user';
+export { admins } from "./admin";
+export { buses } from "./buses";
 export { adminStats, driverStats, nextShuttle } from './stats';
 
 // Re-export types

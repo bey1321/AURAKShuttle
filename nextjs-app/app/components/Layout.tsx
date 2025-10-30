@@ -16,25 +16,26 @@ interface LayoutProps {
 export function Layout({ children, userRole, userName = "User", onLogout, onNavigate, currentPage }: LayoutProps) {
   const navItems = {
     student: [
-      { icon: Home, label: "Dashboard", id: "dashboard" },
+      { icon: Home, label: "User Dashboard", id: "user-dashboard" },
       { icon: MapPin, label: "Track Shuttle", id: "tracking" },
       { icon: Calendar, label: "Schedule", id: "schedule" },
-      { icon: Package, label: "Lost & Found", id: "lost-found" },
+      { icon: Package, label: "Lost & Found", id: "user-lost-found" },
       { icon: MessageSquare, label: "Feedback", id: "feedback" },
     ],
     driver: [
-      { icon: Home, label: "Dashboard", id: "dashboard" },
+      { icon: Home, label: "Driver Dashboard", id: "driver-dashboard" },
       { icon: Bus, label: "My Trips", id: "my-trips" },
       { icon: MapPin, label: "Live Tracking", id: "tracking" },
       { icon: Bell, label: "Send Alert", id: "send-alert" },
     ],
     admin: [
-      { icon: Home, label: "Dashboard", id: "dashboard" },
+      { icon: Home, label: "Admin Dashboard", id: "admin-dashboard" },
+      { icon: Bus, label: "Create Bus", id: "create-bus" },
       { icon: Bus, label: "Manage Trips", id: "manage-trips" },
       { icon: Users, label: "Manage Users", id: "manage-users" },
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
       { icon: MapPin, label: "Live Tracking", id: "tracking" },
-      { icon: Package, label: "Lost & Found", id: "lost-found" },
+      { icon: Package, label: "Admin Lost & Found", id: "admin-lost-found" },
     ],
   };
 
