@@ -5,12 +5,12 @@ from ..setup import Base
 class Registered(Base):
     __tablename__ = 'registered'
 
-    student = relationship('User', back_populates='trip')
+    student = relationship('User', back_populates='route')
     student_id = Column(String, ForeignKey('user.id'))
     
-    trip = relationship('Trip', back_populates='student')
-    trip_id = Column(Integer, ForeignKey('trip.id'))
+    route = relationship('Route', back_populates='student')
+    route_id = Column(Integer, ForeignKey('route.id'))
 
     __table_args__ = (
-        PrimaryKeyConstraint('student_id', 'trip_id')
+        PrimaryKeyConstraint('student_id', 'route_id'),
     )

@@ -10,4 +10,8 @@ class Bus(Base):
     #bus model
 
     trip = relationship('Trip', back_populates='bus')
+
+    model= Column(String, nullable= True)
+    manufacturer = Column(String, nullable=True)
+    status = Column(String, nullable=True)
     

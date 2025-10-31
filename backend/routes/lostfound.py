@@ -10,17 +10,15 @@ from db.models.registered import Registered
 from db.models.trip import Trip
 from db.models.user import User
 from db.models.bus import Bus
-from db.models.found_item import Found
-from db.models.lost_item import Lost
+from backend.AURAKShuttle.backend.db.models.founditem import Found
+from backend.AURAKShuttle.backend.db.models.lostitem import Lost
 from db.models.claim import Claim
-from db.models.userclaim import UserClaim
-from db.models.userfound import UserFound
 from db.models.userlost import UserLost
-
+from db.models.rating import Rating
 
 from schema.item import MakeClaim, LostItemCreate, FoundItemCreate
 
-router = APIRouter('/trip', tags=['Trip'])
+router = APIRouter(prefix='/trip', tags=['Trip'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
@@ -68,8 +66,8 @@ def postLostItem(data: LostItemCreate,db: db_dependency, user = Depends(get_user
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
 
 
-@router.post('/claim')
-def postClaim(data: MakeClaim, db: db_dependency, user = Depends(get_user)):
+@router.post('/claim/{id}')
+def postClaim(id:int,  db: db_dependency, user = Depends(get_user)):
     try:
         claim = Claim(
             phone = data.phone,
@@ -150,3 +148,13 @@ def getFoundItems(db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail="Internal Server Error"
         )
+
+
+@router.get('/lost_item', status_code=status.HTTP_200_OK)
+def getLostItems(db: db_dependency):
+    pass
+
+
+
+
+

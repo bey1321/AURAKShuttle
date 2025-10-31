@@ -22,3 +22,6 @@ class Found(Base):
     trip_id = Column(Integer,ForeignKey('trip.id'))
 
     claim = relationship('Claim', back_populates='item')
+
+    discoveredBy = relationship('User', back_populates='found')
+    finder_id = Column(Integer, ForeignKey('user.id'))

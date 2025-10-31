@@ -4,9 +4,10 @@ from pydantic import BaseModel
 
 class UserCreateRequest(BaseModel):
     email: str
-    passowrd: str
+    password: str
     firstName : str
     lastName : str
+    phone : int
 
 
 class UserLoginRequest(BaseModel):
@@ -15,4 +16,5 @@ class UserLoginRequest(BaseModel):
 
 
 class ChangePassword(BaseModel):
+    email: str
     newPassword: str

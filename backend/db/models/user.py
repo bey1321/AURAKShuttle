@@ -22,9 +22,12 @@ class User(Base):
 
     drives = relationship('DriverTrip', back_populates='driver')
     
-    claim = relationship('UserClaim',back_populates='user')
+    claim = relationship('Claim',back_populates='claimer')
     lost = relationship('UserLost', back_populates='user')
-    found = relationship('UserFound', back_populates='user')
+    found = relationship('Found', back_populates='discoveredBy')
     rating = relationship('Rating', back_populates='user')
+
+    trip = relationship('Registered', back_populates='student')
+    trip_reservations = relationship('TripReservation', back_populates='student')
 
 

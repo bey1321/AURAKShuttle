@@ -7,7 +7,6 @@ class LostItemCreate(BaseModel):
     tripId: int
 
 class MakeClaim(BaseModel):
-    phone: int
     itemId:int
 
 class FoundItemCreate(BaseModel):

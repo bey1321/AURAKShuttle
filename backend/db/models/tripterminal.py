@@ -6,15 +6,15 @@ class TripTerminal(Base):
 
     __tablename__ = 'tripterminal'
 
-    trip_id = Column(Integer, ForeignKey('trip.id'))
-    terminal_id = Column (String, ForeignKey('terminal.terminalName'))
+    route_id = Column(Integer, ForeignKey('route.id'))
+    terminal_id = Column (String, ForeignKey('terminal.id'))
 
-    trip = relationship('Trip', back_populates='terminal')
+    trip = relationship('Route', back_populates='terminal')
     terminal = relationship('Terminal', back_populates='trip')
 
 
     __table_args__ = (
-        PrimaryKeyConstraint('terminal_id', 'trip_id')
+        PrimaryKeyConstraint('terminal_id', 'route_id'),
     )
 
 

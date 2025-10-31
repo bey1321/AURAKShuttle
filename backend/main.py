@@ -13,8 +13,8 @@ app = FastAPI()
 
 app.add_middleware(AuthMiddleware)
 
-app.add_route(auth)
+app.include_router(auth)
 
-app.get('/')
+@app.get('/')
 def greet():
     return 'Welcome to Our Project'
