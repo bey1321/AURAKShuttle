@@ -24,8 +24,10 @@ def get_user(request: Request):
 
 
 def role_required(role: str):
-    def wrapper(user = Depends(get_user)):
+    async def verify_role(user = Depends(get_user)):
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
         if user['role'] != role:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = 'Unauthorized! Access denied')
-        
-    return wrapper
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized! Access denied")
+        return user
+    return Depends(verify_role)

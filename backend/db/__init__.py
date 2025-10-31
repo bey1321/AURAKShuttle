@@ -13,6 +13,7 @@ from .models.tripterminal import TripTerminal
 from .models.userlost import UserLost
 from .models.user import User
 from .models.route import Route
+from .models.tripreservation import TripReservation
 def init_db():
     Base.metadata.drop_all(engine)
 

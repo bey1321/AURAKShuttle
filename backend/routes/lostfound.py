@@ -10,8 +10,8 @@ from db.models.registered import Registered
 from db.models.trip import Trip
 from db.models.user import User
 from db.models.bus import Bus
-from backend.AURAKShuttle.backend.db.models.founditem import Found
-from backend.AURAKShuttle.backend.db.models.lostitem import Lost
+from db.models.founditem import Found
+from db.models.lostitem import Lost
 from db.models.claim import Claim
 from db.models.userlost import UserLost
 from db.models.rating import Rating
@@ -21,9 +21,6 @@ from schema.item import MakeClaim, LostItemCreate, FoundItemCreate
 router = APIRouter(prefix='/trip', tags=['Trip'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
-
-
-
 
 
 @router.post('/lost_item')
@@ -66,12 +63,11 @@ def postLostItem(data: LostItemCreate,db: db_dependency, user = Depends(get_user
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
 
 
-@router.post('/claim/{id}')
-def postClaim(id:int,  db: db_dependency, user = Depends(get_user)):
+@router.post('/claim/{item_id}')
+def postClaim(item_id:int,  db: db_dependency, user = Depends(get_user)):
     try:
         claim = Claim(
-            phone = data.phone,
-            item_id = data.itemId,
+            item_id = item_id,
 
         )
 

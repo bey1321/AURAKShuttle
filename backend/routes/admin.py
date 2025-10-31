@@ -17,30 +17,42 @@ from typing import Annotated, List
 from datetime import datetime, timedelta
 from starlette import status
 from pydantic import field_validator
-from auth import bcrypt_context
+from .auth import hash_password
 
 from schema.admin import newDriver, updateDriver
+from schema.user import UserCreateRequest
 from schema.bus import BusCreateRequest, BusUpdateRequst
-from schema.trip import TripResponse, SemesterTripCreateRequest, SingleTripCreateRequest
+from schema.trip import TripResponse, SemesterTripCreateRequest, SingleTripCreateRequest, TerminalCreateRequest
 
 
 router = APIRouter(
     prefix="/admin",
     tags=["admin"],
-    dependencies=[Depends(role_required("admin"))]
 )
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
 #driver related routes
+@router.get('/drivers')
+def get_driver(db: db_dependency 
+):
+    try:
+        drivers = db.query(User).filter(User.role == 'driver').all()
+        return drivers
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Error! Unable to get drivers! {str(e)}'
+        )
+
 @router.post('/create/driver', status_code=status.HTTP_201_CREATED)
-def createDriver(newDriver: newDriver, db: Session = Depends(db_dependency)):
+def createDriver(driver: UserCreateRequest, db:db_dependency):
     try:
         new_user = User(
-            email=newDriver.email,
-            password=bcrypt_context.hash(newDriver.password),
-            lastName=newDriver.lastName,
-            firstName=newDriver.firstName,
+            email=driver.email,
+            hased_password=hash_password(driver.password),
+            last_name=driver.lastName,
+            first_name=driver.firstName,
             role='driver' 
         )
 
@@ -50,6 +62,12 @@ def createDriver(newDriver: newDriver, db: Session = Depends(db_dependency)):
 
         return {'message': 'New driver created', 'driver_id': new_user.id}
     except Exception as e:
+        import traceback
+        print("=== ERROR ===")
+        traceback.print_exc()       # prints full stack trace
+        print("Exception:", str(e)) # prints the exception message
+        raise e  # re-raise so FastAPI still returns 500
+    except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -58,7 +76,7 @@ def createDriver(newDriver: newDriver, db: Session = Depends(db_dependency)):
 
 
 @router.patch('/update/driver/{driver_id}')
-def updateDriver(driver_id: int, driverData: newDriver, db: Session = Depends(db_dependency)):
+def updateDriver(driver_id: int, driverData: updateDriver, db:db_dependency):
     
     driver = db.query(User).filter(User.id == driver_id, User.role == 'driver').first()
     
@@ -67,11 +85,11 @@ def updateDriver(driver_id: int, driverData: newDriver, db: Session = Depends(db
 
     try:
         driver.email = driverData.email or driver.email
-        driver.firstName = driverData.firstName or driver.firstName
-        driver.lastName = driverData.lastName or driver.lastName
+        driver.first_name = driverData.firstName or driver.first_name
+        driver.last_name = driverData.lastName or driver.last_name
 
         if driverData.password:
-            driver.password = bcrypt_context.hash(driverData.password)
+            driver.hased_password =hash_password(driverData.password)
 
         db.commit()
         db.refresh(driver)
@@ -86,7 +104,7 @@ def updateDriver(driver_id: int, driverData: newDriver, db: Session = Depends(db
 
 
 @router.delete('/delete/driver/{driver_id}')
-def deleteDriver(driver_id: int, db: Session = Depends(db_dependency)):
+def deleteDriver(driver_id: int, db:db_dependency):
     
     driver = db.query(User).filter(User.id == driver_id, User.role == 'driver').first()
     
@@ -109,15 +127,28 @@ def deleteDriver(driver_id: int, db: Session = Depends(db_dependency)):
 
 
 #bus related routes
+@router.get('/bus')
+def get_bus(db: db_dependency):
+    try:
+        buses = db.query(Bus).all()
+
+        return buses
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Error! Unable to fetch buses! {str(e)}'
+        )
+
+
 @router.post('/create/bus')
 def createBus(newBus: BusCreateRequest, db: db_dependency):
     try:
         new_bus = Bus(
             plate_num = newBus.plate_num,
             no_seats = newBus.no_seats,
-            model = new_bus.model,
-            manufacturer = new_bus.manufacturer,
-            status = new_bus.status
+            model = newBus.model,
+            manufacturer = newBus.manufacturer,
+            status = newBus.status
         )
         db.add(new_bus)
         db.commit()
@@ -134,7 +165,7 @@ def createBus(newBus: BusCreateRequest, db: db_dependency):
 
 
 @router.patch('/update/bus/{bus_id}')
-def updateBus(bus_id: int, busData: BusUpdateRequst, db: Session = Depends(db_dependency)):
+def updateBus(bus_id: int, busData: BusUpdateRequst, db: db_dependency):
     
     bus = db.query(Bus).filter(Bus.id == bus_id).first()
     
@@ -165,7 +196,7 @@ def updateBus(bus_id: int, busData: BusUpdateRequst, db: Session = Depends(db_de
 
 
 @router.delete('/delete/bus/{bus_id}')
-def deleteBus(bus_id: int, db: Session = Depends(db_dependency)):
+def deleteBus(bus_id: int, db:db_dependency):
    
     bus = db.query(Bus).filter(Bus.id == bus_id).first()
     
@@ -185,6 +216,7 @@ def deleteBus(bus_id: int, db: Session = Depends(db_dependency)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f'Error! Unable to delete bus! {str(e)}'
         )
+
 
 
 
@@ -215,6 +247,40 @@ def get_bus_assigned_trips(bus_id: int, db: db_dependency):
         )
 
 
+
+
+@router.get('/terminals')
+def get_termianls(db: db_dependency):
+    try:
+        terminals = db.query(Terminal).all()
+        return terminals
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching terminals: {str(e)}"
+            )
+    
+@router.post('/create/terminal')
+def create_terminal(request:TerminalCreateRequest, db: db_dependency ):
+    try:
+        new_terminal = Terminal(
+            city = request.city,
+            terminalName= request.terminalName
+        )
+
+        db.add(new_terminal)
+        db.commit()
+        db.refresh(new_terminal)
+
+        return{'message': f'New terminal created! terminal id is {new_terminal.id}'}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating terminal: {str(e)}"
+            )
+    
+    
 #trip related routes
 @router.post('/create_single_trip', status_code=status.HTTP_201_CREATED)
 def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
@@ -226,8 +292,7 @@ def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
             start_term_id = trip_data.start_terminal_id,
             start_time = trip_data.start_time,
             end_time = trip_data.end_time,
-            type = trip_data.type,
-            route= trip_data.route
+            type = trip_data.type
         )
 
         db.add(new_trip)
@@ -256,7 +321,7 @@ def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
             )
 
 
-@validator('days_of_week')
+@field_validator('days_of_week')
 def validate_days(cls, v):
         valid_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         for day in v:
@@ -264,7 +329,7 @@ def validate_days(cls, v):
                 raise ValueError(f"Invalid day: {day}. Must be one of {valid_days}")
         return v
     
-@validator('end_date')
+@field_validator('end_date')
 def validate_dates(cls, v, values):
         if 'start_date' in values and v < values['start_date']:
             raise ValueError("end_date must be after start_date")

@@ -82,7 +82,7 @@ async def login(data: UserLoginRequest, db: db_dependency):
     token = create_access_token(user.id, user.role, timedelta(minutes=300))
 
     response = JSONResponse(
-        content={"access_token": token, "token_type": "bearer"},
+        content={"role": user.role},
         status_code=status.HTTP_200_OK
     )
     

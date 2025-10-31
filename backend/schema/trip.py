@@ -22,7 +22,6 @@ class SingleTripCreateRequest(BaseModel):
     start_time: time
     end_time: time
     type: str
-    route: str =None
     terminals : List[str]
 
 class SemesterTripCreateRequest(BaseModel):
@@ -37,3 +36,8 @@ class SemesterTripCreateRequest(BaseModel):
     type: str
     route: str
     terminals : List[str]
+
+class TerminalCreateRequest(BaseModel):
+
+    terminalName : str
+    city: str

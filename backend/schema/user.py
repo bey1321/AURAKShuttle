@@ -7,7 +7,6 @@ class UserCreateRequest(BaseModel):
     password: str
     firstName : str
     lastName : str
-    phone : int
 
 
 class UserLoginRequest(BaseModel):

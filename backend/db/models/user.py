@@ -27,7 +27,7 @@ class User(Base):
     found = relationship('Found', back_populates='discoveredBy')
     rating = relationship('Rating', back_populates='user')
 
-    trip = relationship('Registered', back_populates='student')
+    route = relationship('Registered', back_populates='student')
     trip_reservations = relationship('TripReservation', back_populates='student')
 
 
