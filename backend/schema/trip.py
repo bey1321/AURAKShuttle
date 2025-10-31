@@ -28,15 +28,17 @@ class SingleTripCreateRequest(BaseModel):
 class SemesterTripCreateRequest(BaseModel):
     start_date: date
     end_date: date
+
     days_of_week: List[str]
+
     bus_id: int = None
     driver_id : int =None
     start_terminal_id : int
     start_time: time
     end_time: time
     type: str
-    route: str
     terminals : List[str]
+    name: str
 
 class TerminalCreateRequest(BaseModel):
 

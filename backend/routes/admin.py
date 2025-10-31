@@ -361,7 +361,7 @@ def validate_dates(cls, v, values):
         return v
 
 
-@router.post("/semester-trips", status_code=status.HTTP_201_CREATED)
+@router.post("/semester_trips", status_code=status.HTTP_201_CREATED)
 async def create_semester_trips(
     request: SemesterTripCreateRequest,
     db: db_dependency  # Ensure only admin can create
@@ -421,7 +421,26 @@ async def create_semester_trips(
         # Generate all dates in the semester that match the requested days
         created_trips = []
         current_date = request.start_date
+        new_route = Route(
+            name = request.name,
+            start_terminal_id = request.start_terminal_id,
+            type = request.type,
+            start_time = request.start_time,
+            end_time = request.end_time )
         
+        db.add(new_route)
+        db.commit()
+        db.refresh(new_route)
+
+        for terminal in request.terminals:
+            new_terminal = TripTerminal(
+                route_id = new_route.id,
+                terminal_id = terminal
+            )
+
+            db.add(new_terminal)
+            db.commit()
+
         while current_date <= request.end_date:
             # Check if current day is one of the requested days
             if current_date.weekday() in target_weekdays:
@@ -429,11 +448,8 @@ async def create_semester_trips(
                 trip = Trip(
                     date=current_date,
                     bus_id=request.bus_id,
-                    start_terminal_id=request.start_terminal_id,
-                    start_time=request.start_time,
-                    end_time=request.end_time,
-                    type=request.type,
-                    route=request.route,
+
+                    route_id=new_route.id,
                     status="scheduled",  # Default status
 
                 )
@@ -461,7 +477,6 @@ async def create_semester_trips(
             "total_trips_created": len(created_trips),
             "trip_details": created_trips[:10],  # Return first 10 as sample
             "route_info": {
-                "route": request.route,
                 "type": request.type,
                 "start_terminal_id": request.start_terminal_id,
                 "terminals": request.terminals
