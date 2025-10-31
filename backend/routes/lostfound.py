@@ -18,13 +18,17 @@ from db.models.rating import Rating
 
 from schema.item import MakeClaim, LostItemCreate, FoundItemCreate
 
-router = APIRouter(prefix='/trip', tags=['Trip'])
+router = APIRouter(prefix='/lostfound', tags=['Trip'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
 @router.post('/lost_item')
 def postLostItem(data: LostItemCreate,db: db_dependency, user = Depends(get_user)):
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Unauthorized access')
+
     try:
         lost_item = Lost(
             obj_name = data.objName,
@@ -36,9 +40,11 @@ def postLostItem(data: LostItemCreate,db: db_dependency, user = Depends(get_user
         db.add(lost_item)
         db.commit()
         db.refresh(lost_item)
+        print('good up to here')
 
         user_lost = UserLost(
-            user_id = user.id,
+            user_id = user['id'],
+            
             item_id = lost_item.id
         )
 
@@ -59,15 +65,26 @@ def postLostItem(data: LostItemCreate,db: db_dependency, user = Depends(get_user
                 "lost_id": user_lost.item_id
             }
         }
-    except:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
+    except Exception as e:
+        db.rollback()
+        print("❌ Error in /lost_item route:", str(e))  # Print real error to terminal
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal Server Error: {str(e)}"
+        )
 
 
 @router.post('/claim/{item_id}')
 def postClaim(item_id:int,  db: db_dependency, user = Depends(get_user)):
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Unauthorized access')
+
+
     try:
         claim = Claim(
             item_id = item_id,
+            claimer_id = user['id']
 
         )
 
@@ -75,15 +92,6 @@ def postClaim(item_id:int,  db: db_dependency, user = Depends(get_user)):
         db.commit()
         db.refresh(claim)
 
-        user_claim = UserClaim(
-            user_id = user.id,
-            item_id = claim.id
-        )
-
-        db.add(user_claim)
-        db.commit()
-        db.refresh(user_claim)
-        
         return {'message': 'claim successfully made'}
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
@@ -97,32 +105,22 @@ def postFoundItem(data: FoundItemCreate, db: Session = Depends(get_db), user = D
             obj_name = data.objName,
             obj_description = data.objDescription,
             obj_type = data.objType,
-            trip_id = data.tripId
+            trip_id = data.tripId,
+            finder_id = user['id']
         )
         db.add(found_item)
         db.commit()
         db.refresh(found_item)  # Get the generated ID
 
-        # 2️⃣ Create the relation in UserFound
-        user_found = UserFound(
-            user_id=user.id,
-            found_id=found_item.id
-        )
-        db.add(user_found)
-        db.commit()
-        db.refresh(user_found)
+
 
         return {
             "found_item": {
                 "id": found_item.id,
                 "name": found_item.obj_name,
                 "description": found_item.obj_description
-            },
-            "user_found": {
-                "id": user_found.id,
-                "user_id": user_found.user_id,
-                "found_id": user_found.item_id
             }
+
         }
 
     except Exception as e:
@@ -148,7 +146,15 @@ def getFoundItems(db: Session = Depends(get_db)):
 
 @router.get('/lost_item', status_code=status.HTTP_200_OK)
 def getLostItems(db: db_dependency):
-    pass
+    try:
+        items = db.query(Lost).all()
+        return {'lost items': items}
+
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal Server Error"
+        )
 
 
 

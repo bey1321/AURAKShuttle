@@ -46,8 +46,8 @@ async def createAccount(data: UserCreateRequest, db: db_dependency):
         
         new_user = User(
             email=data.email,
-            first_name=data.firstName,
-            last_name=data.lastName,
+            first_name=data.first_name,
+            last_name=data.last_name,
             hased_password=hash_password(data.password)
         )
 

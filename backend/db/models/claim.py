@@ -9,9 +9,8 @@ class Claim(Base):
     id = Column(Integer, autoincrement=True, primary_key=True)
     
     claimer = relationship('User', back_populates='claim')
-    claimer_id = Column(Integer, ForeignKey('user.id'))
+    claimer_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     
-    phone = Column(Integer, nullable = False)
 
     item = relationship('Found', back_populates='claim')
     item_id = Column(Integer, ForeignKey('found.id'))

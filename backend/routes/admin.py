@@ -5,6 +5,7 @@ from db.models.trip import Trip
 from db.models.drivertrip import DriverTrip
 from db.models.terminal import Terminal
 from db.models.route import Route
+from db.models.tripterminal import TripTerminal
 
 from db.setup import get_db
 from middleware.role import get_user
@@ -51,8 +52,8 @@ def createDriver(driver: UserCreateRequest, db:db_dependency):
         new_user = User(
             email=driver.email,
             hased_password=hash_password(driver.password),
-            last_name=driver.lastName,
-            first_name=driver.firstName,
+            last_name=driver.last_name,
+            first_name=driver.first_name,
             role='driver' 
         )
 
@@ -85,8 +86,8 @@ def updateDriver(driver_id: int, driverData: updateDriver, db:db_dependency):
 
     try:
         driver.email = driverData.email or driver.email
-        driver.first_name = driverData.firstName or driver.first_name
-        driver.last_name = driverData.lastName or driver.last_name
+        driver.first_name = driverData.first_name or driver.first_name
+        driver.last_name = driverData.last_name or driver.last_name
 
         if driverData.password:
             driver.hased_password =hash_password(driverData.password)
@@ -260,6 +261,7 @@ def get_termianls(db: db_dependency):
             detail=f"Error fetching terminals: {str(e)}"
             )
     
+
 @router.post('/create/terminal')
 def create_terminal(request:TerminalCreateRequest, db: db_dependency ):
     try:
@@ -280,32 +282,55 @@ def create_terminal(request:TerminalCreateRequest, db: db_dependency ):
             detail=f"Error creating terminal: {str(e)}"
             )
     
-    
+
+
 #trip related routes
 @router.post('/create_single_trip', status_code=status.HTTP_201_CREATED)
 def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
     try:
+
+        new_route = Route(
+            name = trip_data.name,
+            start_terminal_id = trip_data.start_terminal_id,
+            type = trip_data.type,
+            start_time = trip_data.start_time,
+            end_time = trip_data.end_time
+
+        )
+
+        db.add(new_route)
+        db.commit()
+        db.refresh(new_route)
+
         new_trip = Trip(
             date =trip_data.date,
             status = trip_data.status or None,
-            bus_id= trip_data.bus_id,
-            start_term_id = trip_data.start_terminal_id,
-            start_time = trip_data.start_time,
-            end_time = trip_data.end_time,
-            type = trip_data.type
+            bus_id= trip_data.bus_id or None,
+            route_id = new_route.id
+
         )
 
         db.add(new_trip)
         db.commit()
         db.refresh(new_trip)
 
-        driver_trip = DriverTrip(
-            trip_id = new_trip.id,
-            driver_id = trip_data.driver_id
-        )
+        if (trip_data.driver_id):
+            driver_trip = DriverTrip(
+                trip_id = new_trip.id,
+                driver_id = trip_data.driver_id
+            )
 
-        db.add(driver_trip)
-        db.commit()
+            db.add(driver_trip)
+            db.commit()
+
+        for terminal in trip_data.terminals:
+            new_terminal = TripTerminal(
+                route_id = new_route.id,
+                terminal_id = terminal
+            )
+
+            db.add(new_terminal)
+            db.commit()
 
 
         return {'message': 'Trip added successfully'}
@@ -380,7 +405,7 @@ async def create_semester_trips(
                     detail=f"Driver with id {request.driver_id} not found"
                 )
             
-            #check if the bus driver is already assigned at this time interval and date
+#check if the bus driver is already assigned at this time interval and date
         
         # Validate start terminal exists
         start_terminal = db.query(Terminal).filter(

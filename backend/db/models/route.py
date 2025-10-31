@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, Time
 from sqlalchemy.orm import relationship
 from ..setup import Base
 
@@ -19,3 +19,6 @@ class Route(Base):
     student = relationship('Registered', back_populates='route')
 
     type = Column(String, default = 'regular')
+
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable = False)
