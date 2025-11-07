@@ -15,4 +15,19 @@ class updateDriver(BaseModel):
     phone: Optional[int] = None
     password: Optional[str] = None
 
+class UserResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    role: str
+    phone: str
+    email: str
+
+class DriverResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    phone: str
+    email: str
+
 

@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from db.models.user import User
 from db.models.bus import Bus
 from db.models.trip import Trip
-from db.models.drivertrip import DriverTrip
 from db.models.terminal import Terminal
 from db.models.route import Route
 from db.models.tripterminal import TripTerminal
@@ -12,7 +11,7 @@ from middleware.role import get_user
 from middleware.role import role_required
 
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 from typing import Annotated, List
 from datetime import datetime, timedelta
@@ -20,10 +19,13 @@ from starlette import status
 from pydantic import field_validator
 from .auth import hash_password
 
-from schema.admin import newDriver, updateDriver
+from schema.admin import newDriver, updateDriver, UserResponse, DriverResponse
 from schema.user import UserCreateRequest
-from schema.bus import BusCreateRequest, BusUpdateRequst
-from schema.trip import TripResponse, SemesterTripCreateRequest, SingleTripCreateRequest, TerminalCreateRequest
+from schema.bus import BusCreateRequest, BusUpdateRequst, BusResponse
+from schema.trip import (
+    TripResponse, SemesterTripCreateRequest, SingleTripCreateRequest, 
+    TerminalCreateRequest,TerminalUpdateRequest, TerminalResponse, 
+    TripUpdateRequest, RouteResponse)
 
 
 router = APIRouter(
@@ -33,8 +35,18 @@ router = APIRouter(
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
+@router.get('/all_users', response_model= List[UserResponse])
+def get_users(db: db_dependency):
+    try:
+        users = db.query(User).filter(User.role != 'driver' or User.role !='admin').all()
+        return users
+    
+    except Exception as e:
+        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail= f'Unable to get users. {str(e)}')
+
+
 #driver related routes
-@router.get('/drivers')
+@router.get('/drivers', response_model=List[DriverResponse])
 def get_driver(db: db_dependency 
 ):
     try:
@@ -45,6 +57,7 @@ def get_driver(db: db_dependency
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f'Error! Unable to get drivers! {str(e)}'
         )
+
 
 @router.post('/create/driver', status_code=status.HTTP_201_CREATED)
 def createDriver(driver: UserCreateRequest, db:db_dependency):
@@ -128,7 +141,7 @@ def deleteDriver(driver_id: int, db:db_dependency):
 
 
 #bus related routes
-@router.get('/bus')
+@router.get('/bus', response_model=List[BusResponse])
 def get_bus(db: db_dependency):
     try:
         buses = db.query(Bus).all()
@@ -250,7 +263,7 @@ def get_bus_assigned_trips(bus_id: int, db: db_dependency):
 
 
 
-@router.get('/terminals')
+@router.get('/terminals', response_model= List[TerminalResponse])
 def get_termianls(db: db_dependency):
     try:
         terminals = db.query(Terminal).all()
@@ -283,7 +296,42 @@ def create_terminal(request:TerminalCreateRequest, db: db_dependency ):
             )
     
 
+@router.patch('/terminals')
+def update_termianl(data: TerminalUpdateRequest, db: db_dependency):
 
+    terminal = db.query(Terminal).filter(Terminal.id == data.id).first()
+
+    if not terminal:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail= 'Unable to find terminal')
+        
+    try:
+        terminal.city  = data.city or terminal.city
+        terminal.terminalName = data.terminalName or terminal.terminalName
+
+        db.commit()
+
+        return{'message': 'Terminal updated!'}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=
+                        f'Unable to update termianls.{str(e)} ')
+
+@router.delete('/terminal/{terminal_id}')
+def delete_termianl(terminal_id: int, db: db_dependency):
+    terminal= db.query(Terminal).filter(Terminal.id == terminal_id).first()
+
+    if not terminal:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail= 'Unable to find terminal')
+
+    try:
+
+        db.delete(terminal)
+        db.commit()
+
+        return {'message': 'Delete terminal!'}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f'Unable to delete terminal. {str(e)}')
+    
 #trip related routes
 @router.post('/create_single_trip', status_code=status.HTTP_201_CREATED)
 def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
@@ -310,27 +358,28 @@ def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
 
         )
 
-        db.add(new_trip)
-        db.commit()
-        db.refresh(new_trip)
+
 
         if (trip_data.driver_id):
-            driver_trip = DriverTrip(
-                trip_id = new_trip.id,
-                driver_id = trip_data.driver_id
-            )
+            new_trip.driver_id = trip_data.driver_id
 
-            db.add(driver_trip)
-            db.commit()
+ 
 
         for terminal in trip_data.terminals:
+            ter = db.query(Terminal).filter(Terminal.id == terminal).first()
+            if not ter:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = f'Unable to find terminal with id: {terminal}')
             new_terminal = TripTerminal(
                 route_id = new_route.id,
                 terminal_id = terminal
             )
-
             db.add(new_terminal)
             db.commit()
+        db.add(new_trip)
+        db.commit()
+        db.refresh(new_trip)
+
+ 
 
 
         return {'message': 'Trip added successfully'}
@@ -346,6 +395,76 @@ def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
             )
 
 
+@router.get('/all_trips')#, response_model = List[TripResponse]
+def get_all_trips(db: db_dependency):
+    try:
+        today = datetime.now().date()
+        
+        query = (
+            select(Trip)
+        .where(Trip.date >= today, Trip.status != 'completed')
+        .options(
+            selectinload(Trip.bus), 
+            selectinload(Trip.driver),
+            selectinload(Trip.route).selectinload(Route.start_terminal),
+            selectinload(Trip.route).selectinload(Route.terminals).selectinload(TripTerminal.terminal)))
+        trips = db.scalars(query).all()
+   
+        return trips
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail =f'Unable to get all trips. {str(e)}'
+        )
+
+
+@router.patch('/trip/{trip_id}')
+def update_trip(trip_id: int, request: TripUpdateRequest, db: db_dependency):
+    try:
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+        if not trip:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = 'Unable to find trip with id {trip_id}')
+        
+        trip.date = request.date or trip.date
+        trip.bus_id = request.bus_id or trip.bus_id
+        trip.status = request.status or trip.status
+
+        if request.driver_id:
+            trip.driver_id = request.driver_id
+
+ 
+
+        db.commit()
+
+        return {'message': f'Updated trip with trip id: {trip_id} successfully'}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail =f'Unable to update trip with id {trip_id}. {str(e)}'
+        )
+
+@router.delete('/trip/{trip_id}')
+def delete_trip(trip_id: int, db: db_dependency):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+    if not trip:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = 'Unable to find trip with id {trip_id}')
+    try:
+        db.delete(trip)
+        db.commit()
+
+        return {'message': 'trip deleted'}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail =f'Unable to delete trip with id {trip_id}. {str(e)}'
+        )
+
+    
+#routes related to semester trips
 @field_validator('days_of_week')
 def validate_days(cls, v):
         valid_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -396,14 +515,7 @@ async def create_semester_trips(
         #check if the bus is already allocated
 
 
-        if request.driver_id:
-            driver = db.query(User).filter(User.id == request.driver_id).first()
-            
-            if not driver:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Driver with id {request.driver_id} not found"
-                )
+
             
 #check if the bus driver is already assigned at this time interval and date
         
@@ -417,7 +529,13 @@ async def create_semester_trips(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Terminal with id {request.start_terminal_id} not found"
             )
-        
+        for terminal_id in request.terminals:
+            ter = db.query(Terminal).filter(Terminal.id == terminal_id).first()
+            if not ter:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f'Unable to find terminal with id: {terminal_id}'
+                        )
         # Generate all dates in the semester that match the requested days
         created_trips = []
         current_date = request.start_date
@@ -426,13 +544,15 @@ async def create_semester_trips(
             start_terminal_id = request.start_terminal_id,
             type = request.type,
             start_time = request.start_time,
-            end_time = request.end_time )
+            end_time = request.end_time,
+            days_of_week = request.days_of_week )
         
         db.add(new_route)
         db.commit()
         db.refresh(new_route)
 
         for terminal in request.terminals:
+
             new_terminal = TripTerminal(
                 route_id = new_route.id,
                 terminal_id = terminal
@@ -453,6 +573,15 @@ async def create_semester_trips(
                     status="scheduled",  # Default status
 
                 )
+                if request.driver_id:
+                    driver = db.query(User).filter(User.id == request.driver_id).first()
+            
+                    if not driver:
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Driver with id {request.driver_id} not found"
+                        )
+                    trip.driver_id = request.driver_id
                 db.add(trip)
                 created_trips.append({
                     "date": current_date,
@@ -491,15 +620,141 @@ async def create_semester_trips(
         )
 
 
-@router.put('/update/trip')
-def updateTrip():
-    pass
+@router.patch('/semester_trip/{route_id}', status_code=status.HTTP_202_ACCEPTED)
+def updateRoute(route_id: int, request: SemesterTripCreateRequest, db: db_dependency):
+    try:
+        route = db.query(Route).filter(Route.id == route_id).first()
 
-@router.delete('delete/trip/{id}')
-def deleteTrip(id: int):
-    pass
+        if not route:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail = f'Route with id {route_id} not found'
+            )
+        
+        route.name = request.name
+        route.type = request.type
+        route.start_terminal_id = request.start_terminal_id
+        route.start_time = request.start_time
+        route.end_time = request.end_time
+        route.days_of_week = request.days_of_week
+
+        db.commit()
+        db.refresh(route)
 
 
+        db.query(TripTerminal).filter(TripTerminal.route_id== route_id).delete()
+
+        for terminal in request.terminals:
+            db.add(TripTerminal(route_id = route_id, terminal_id = terminal))
+        
+        db.commit()
+
+
+        today = datetime.now().date()
+
+        db.query(Trip).filter(
+            Trip.route_id == route_id,
+            Trip.date >= today,
+            Trip.status.in_(['scheduled', 'upcoming'])
+        ).delete()
+
+        db.commit()
+
+        day_mapping = {
+            "Monday": 0, "Tuesday": 1, "Wednesday": 2,
+            "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6 
+        }
+
+        target_weekdays = [day_mapping[day] for day in request.days_of_week]
+        
+        created_trips = []
+        current_date = request.start_date
+        
+        while current_date <= request.end_date:
+            if current_date.weekday() in target_weekdays and current_date >= today:
+                new_trip = Trip(
+                    date=current_date,
+                    bus_id=request.bus_id,
+                    route_id=route_id,
+                    status="scheduled"
+                )
+                db.add(new_trip)
+                created_trips.append(current_date)
+            current_date += timedelta(days=1)
+
+        db.commit()
+
+        return {
+            "message": f"Route '{route.name}' updated successfully.",
+            "total_new_trips_created": len(created_trips),
+            "note": "Completed trips were preserved."
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating semester trip: {str(e)}"
+        )
+
+@router.delete('/semester_trip/{route_id}', status_code = status.HTTP_202_ACCEPTED)
+def delete_route(route_id: int, db: db_dependency):
+    """
+    Delete a route and all associated trips.
+    """
+    try:
+        # Verify route exists
+        route = db.query(Route).filter(Route.id == route_id).first()
+        if not route:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Route with id {route_id} not found"
+            )
+        
+
+        # Delete related trips first (to avoid FK constraint)
+        deleted_trips = db.query(Trip).filter(Trip.route_id == route_id).delete()
+        db.commit()
+
+        # Delete terminals under the route
+        db.query(TripTerminal).filter(TripTerminal.route_id == route_id).delete()
+        db.commit()
+
+        # Delete the route itself
+        db.delete(route)
+        db.commit()
+
+        return {
+            "message": "Route and all related trips deleted successfully",
+            "deleted_trips_count": deleted_trips
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting route/trips: {str(e)}"
+        )
+
+
+@router.get('/routes', status_code=status.HTTP_200_OK, response_model =List[RouteResponse])
+def get_all_routes(db: db_dependency):
+    try:
+        query = select(Route).options(
+            selectinload(Route.terminals).selectinload(TripTerminal.terminal),
+            selectinload(Route.start_terminal)
+        )
+
+        routes = db.scalars(query).all()
+
+        return routes
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Uable to get all routes. {str(e)}'
+        )
+    
 
 #lost and found related routes
 @router.get('/remove_item/{id}')

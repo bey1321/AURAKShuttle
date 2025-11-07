@@ -14,4 +14,7 @@ class Bus(Base):
     model= Column(String, nullable= True)
     manufacturer = Column(String, nullable=True)
     status = Column(String, nullable=True)
+
+    #manufactur_year = Column(Integer)
+    #fuel_type = Column(String)
     

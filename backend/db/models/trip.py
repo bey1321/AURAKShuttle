@@ -13,9 +13,11 @@ class Trip(Base):
     status = Column(String, default= 'scheduled') #set a default for this and make a domain for this
     ETA = Column(Time, nullable = True)  
 
-    bus_id = Column(String, ForeignKey('bus.id'))
+    bus_id = Column(Integer, ForeignKey('bus.id'))
     bus = relationship('Bus', back_populates='trip')
-    driver = relationship('DriverTrip', back_populates='trip')
+    
+    driver_id = Column(Integer, ForeignKey('user.id'))
+    driver = relationship('User', back_populates='drives_trip')
     
     rating = relationship('Rating', back_populates='trip')
     lost_item = relationship('Lost', back_populates='trip')
@@ -26,7 +28,7 @@ class Trip(Base):
     
     reservations = relationship('TripReservation', back_populates='trip')
 
-
+    location_history = relationship('LocationHistory', back_populates='trip')
 
 
 
