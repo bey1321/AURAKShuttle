@@ -15,7 +15,7 @@ class Found(Base):
     obj_type = Column(String)
     
     date = Column(Date, default = datetime.now().date())
-    status = Column(String, default = 'pending')  #prepare domain for it
+    status = Column(String, default = 'pending')  # pending, claimed, received
     
 
     trip = relationship('Trip', back_populates='found_item')
@@ -25,3 +25,4 @@ class Found(Base):
 
     discoveredBy = relationship('User', back_populates='found')
     finder_id = Column(Integer, ForeignKey('user.id'))
+

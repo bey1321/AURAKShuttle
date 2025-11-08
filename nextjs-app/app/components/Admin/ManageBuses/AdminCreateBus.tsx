@@ -17,31 +17,34 @@ import {
   TableCell,
   Badge,
   Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "../../ui";
 import { Bus } from "../../../data/types";
 import CreateBusForm from "./CreateBusForm";
 import EditBus from "./EditBus";
 import ConfirmDeleteDialog from "../../ConfirmDeleteDialog";
 import { BusFormData } from "./BusSchema";
+import { adminAPI } from "../../../lib/api";
 
 export default function AdminCreateBus() {
   const [buses, setBuses] = useState<Bus[]>([]);
   const [showCreateBus, setShowCreateBus] = useState(false);
   const [editBus, setEditBus] = useState<Bus | null>(null);
   const [busToDelete, setBusToDelete] = useState<Bus | null>(null);
-
-  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const [loading, setLoading] = useState(true);
+  const [selectedBusForTrips, setSelectedBusForTrips] = useState<Bus | null>(null);
+  const [busTrips, setBusTrips] = useState<any[]>([]);
+  const [loadingTrips, setLoadingTrips] = useState(false);
 
   // Fetch buses from backend on mount
   useEffect(() => {
     const fetchBuses = async () => {
       try {
-        const res = await fetch(`${base}/admin/bus`);
-        const data = await res.json();
-        if (!res.ok) {
-          alert(data.detail || "Failed to fetch buses");
-          return;
-        }
+        setLoading(true);
+        const data = await adminAPI.getBuses();
 
         const mappedBuses: Bus[] = data.map((b: any) => ({
           busID: b.id,
@@ -53,14 +56,16 @@ export default function AdminCreateBus() {
         }));
 
         setBuses(mappedBuses);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        alert("Server error while fetching buses");
+        alert(err?.message || "Server error while fetching buses");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchBuses();
-  }, [base]);
+  }, []);
 
   // Add bus
   const handleAddBus = async (data: BusFormData) => {
@@ -74,17 +79,7 @@ export default function AdminCreateBus() {
         status: data.status,
       };
 
-      const res = await fetch(`${base}/admin/create/bus`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.detail || "Failed to create bus");
-      }
+      const json = await adminAPI.createBus(payload);
 
       // Add the new bus to the frontend state
       const newBus: Bus = {
@@ -106,41 +101,41 @@ export default function AdminCreateBus() {
   // Update bus in state by busID
   const handleSaveEdit = async (busID: number, data: Partial<Bus>) => {
     try {
-      const res = await fetch(`${base}/admin/update/bus/${busID}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.detail || json.message || "Failed to update bus");
-      }
+      await adminAPI.updateBus(busID, data);
 
       setBuses((prev) =>
         prev.map((b) => (b.busID === busID ? { ...b, ...data } : b))
       );
       setEditBus(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert((err as any).message || "Server error while updating bus");
+      alert(err?.message || "Server error while updating bus");
     }
   };
 
   const handleDeleteBus = async (busID: number) => {
     try {
-      const res = await fetch(`${base}/admin/delete/bus/${busID}`, {
-        method: "DELETE",
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.detail || json.message || "Failed to delete bus");
-      }
+      await adminAPI.deleteBus(busID);
       setBuses((prev) => prev.filter((b) => b.busID !== busID));
       setBusToDelete(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert((err as any).message || "Server error while deleting bus");
+      alert(err?.message || "Server error while deleting bus");
+    }
+  };
+
+  const handleViewBusTrips = async (bus: Bus) => {
+    setSelectedBusForTrips(bus);
+    try {
+      setLoadingTrips(true);
+      const trips = await adminAPI.getBusTrips(bus.busID);
+      setBusTrips(trips);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to load bus trips");
+      setBusTrips([]);
+    } finally {
+      setLoadingTrips(false);
     }
   };
 
@@ -192,6 +187,8 @@ export default function AdminCreateBus() {
                   <TableCell>
                     <Badge
                       variant={bus.status === "Active" ? "default" : "outline"}
+                      className="cursor-pointer hover:opacity-80"
+                      onClick={() => handleViewBusTrips(bus)}
                     >
                       {bus.status}
                     </Badge>
@@ -238,6 +235,66 @@ export default function AdminCreateBus() {
           onCancel={() => setBusToDelete(null)}
         />
       )}
+
+      {/* Bus Trips Popup */}
+      <Dialog
+        open={!!selectedBusForTrips}
+        onOpenChange={(open) => !open && setSelectedBusForTrips(null)}
+      >
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Trips Assigned to Bus: {selectedBusForTrips?.plate_num}
+            </DialogTitle>
+            <DialogDescription>
+              All trips assigned to this bus
+            </DialogDescription>
+          </DialogHeader>
+          {loadingTrips ? (
+            <p className="text-muted-foreground">Loading trips...</p>
+          ) : busTrips.length === 0 ? (
+            <p className="text-muted-foreground">
+              No trips assigned to this bus.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Trip ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Route</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {busTrips.map((trip: any) => (
+                  <TableRow key={trip.id}>
+                    <TableCell>{trip.id}</TableCell>
+                    <TableCell>
+                      {new Date(trip.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          trip.status === "scheduled" ||
+                          trip.status === "upcoming"
+                            ? "default"
+                            : "outline"
+                        }
+                      >
+                        {trip.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {trip.route?.name || trip.route_id || "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

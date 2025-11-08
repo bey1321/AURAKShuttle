@@ -10,6 +10,7 @@ class Terminal(Base):
     terminalName =  Column(String, nullable= False)
     city = Column(String, nullable= False)
 
-    trip = relationship('TripTerminal', back_populates='terminal')
     start_trip = relationship('Route', back_populates='start_terminal')
+    tripterminals = relationship('TripTerminal', back_populates='terminal')
+
 

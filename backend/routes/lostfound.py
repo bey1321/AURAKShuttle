@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from typing import Annotated
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from db.setup import get_db
 from middleware.role import get_user
 from sqlalchemy import select
@@ -80,13 +80,17 @@ def postClaim(item_id:int,  db: db_dependency, user = Depends(get_user)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Unauthorized access')
 
+    item = db.query(Found).filter(Found.id == item_id).first()
 
+    if not item:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = f"Unable to find item with id: {item_id}")
     try:
         claim = Claim(
-            item_id = item_id,
+            item_id = item.id,
             claimer_id = user['id']
 
         )
+        item.status = 'claimed'
 
         db.add(claim)
         db.commit()
@@ -158,5 +162,109 @@ def getLostItems(db: db_dependency):
 
 
 
+@router.get('/admin/found_and_claim') # need response model to filter the password fromt the data to be sent
+def get_found_items(db: Session = Depends(get_db), user = Depends(get_user) ):
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "User not authorized")
+    
+    if user['role'] != 'admin':
+         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "Not allowed")
+    
+    try:
+
+        query = (
+            select(Found).where(Found.status != 'recieved').options(
+                selectinload(Found.claim).selectinload(Claim.claimer),
+                selectinload(Found.discoveredBy),
+                selectinload(Found.trip)
+            )
+        )
+
+        found_items = db.scalars(query).all()
+
+        return found_items
 
 
+
+    except Exception as e:
+        raise HTTPException(
+            status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail = f"Unable to fetch found items. {str(e)}"
+        )
+    
+
+
+@router.post('/admin/found_recieved/student/{student_id}/claim/{claim_id}')
+def declare_recieved(student_id: int, claim_id: int, db: Session = Depends(get_db), user = Depends(get_user) ):
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "User not authorized")
+    
+    if user['role'] != 'admin':
+         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "Not allowed")
+    
+    student = db.query(User).filter(User.id == student_id).first()
+
+    if not student:
+        raise HTTPException(
+            status_code= status.HTTP_400_BAD_REQUEST,
+            detail = f"Unable to student with id: {student_id}"
+        )
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+
+    if not claim:
+        raise HTTPException(
+            status_code= status.HTTP_400_BAD_REQUEST,
+            detail = f"Unable to claim with id: {claim_id}"
+        )
+    
+    try:
+
+        claim.status = 'recieved'
+
+        found_item = db.query(Found).filter(Found.id == claim.item_id).first()
+
+        if not found_item:
+            raise HTTPException(
+            status_code= status.HTTP_400_BAD_REQUEST,
+            detail = f"Unable to item with id: {claim.item_id}"
+            )
+        
+        found_item.status = 'recieved'
+
+        db.commit()
+
+        return {'message': 'Updated done!'}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail = f"Unable to update found item. {str(e)}"
+        )
+    
+
+@router.post('/admin/approve/claim/{claim_id}')
+def approve_claim(claim_id: int, db: Session = Depends(get_db), user = Depends(get_user) ):
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "User not authorized")
+    
+    if user['role'] != 'admin':
+         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "Not allowed")
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+
+    if not claim:
+        raise HTTPException(
+            status_code= status.HTTP_400_BAD_REQUEST,
+            detail = f"Unable to claim with id: {claim_id}"
+        )
+    try:
+        claim.status = 'approved'
+        db.commit()
+
+        return {'message': 'Claim approved'}
+
+    except Exception as e:
+        raise HTTPException(
+                status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail = f"Unable to approve claim. {str(e)}"
+            )
+        

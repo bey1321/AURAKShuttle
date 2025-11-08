@@ -23,11 +23,11 @@ from datetime import datetime, timedelta
 from typing import List
 
 
-router = APIRouter(prefix='/trip', tags=['Trip'])
+router = APIRouter(prefix='/user', tags=['Trip'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.get('/get_mytrips', status_code=status.HTTP_200_OK, response_model=List[TripResponse])
+@router.get('/get_mytrips', status_code=status.HTTP_200_OK)#, response_model=List[TripResponse]
 def get_my_trips(db: db_dependency, user = Depends(get_user)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Unauthorized access')
@@ -38,8 +38,11 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             select(Trip)
             .join(Route, Trip.route_id == Route.id)
             .join(Registered, Registered.route_id == Route.id)
-            .where(Registered.student_id == user.id)
-            .options(selectinload(Trip.route), selectinload(Trip.bus))
+            .where(Registered.student_id == user['id'])
+            .options(
+                selectinload(Trip.route), 
+                selectinload(Trip.bus)
+            )
         )
         
         # Get trips from one-time reservations
@@ -47,10 +50,13 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             select(Trip)
             .join(TripReservation, TripReservation.trip_id == Trip.id)
             .where(
-                TripReservation.student_id == user.id,
+                TripReservation.student_id == user['id'],
                 TripReservation.status == 'confirmed'
             )
-            .options(selectinload(Trip.route), selectinload(Trip.bus))
+            .options(
+                selectinload(Trip.route), 
+                selectinload(Trip.bus)
+            )
         )
         
         regular_trips = db.scalars(regular_trips_stmt).all()
@@ -64,35 +70,71 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
         
         all_trips = list(all_trips_dict.values())
         
-        # Sort by date and time
+        # Sort by date and ETA
         sorted_trips = sorted(
             all_trips, 
-            key=lambda t: (t.date, t.scheduled_start_time or t.start_time or datetime.min.time())
+            key=lambda t: (t.date, t.ETA)
         )
         
-        return sorted_trips
+        # Build response with route_name from the route relationship
+        response_data = []
+        for trip in sorted_trips:
+            trip_data = {
+                "id": trip.id,
+                "date": trip.date,
+                "status": trip.status,
+                "ETA": trip.ETA,
+                "bus_id": trip.bus_id,
+                "route_id": trip.route_id,
+                "route_name": trip.route.name if trip.route else None,  # Get name from Route
+                # Add any other fields your TripResponse needs
+            }
+            response_data.append(trip_data)
+        
+        return response_data
 
     except Exception as e:
         print(f"Error getting trips: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail='Internal Server Error! Unable to get your shuttle trips'
+            detail=f'Internal Server Error! Unable to get your shuttle trips: {str(e)}'
         )
 
-@router.get('/all_trips', status_code=200, response_model=List[TripResponse])
+@router.get('/all_trips', status_code=status.HTTP_200_OK) #, response_model=List[TripResponse]
 def getAllTrips(db: db_dependency, user = Depends(get_user)):
 
     if not user:
-        raise HTTPException(status_code=401, detail='Unauthorized access')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Unauthorized access')
 
     try:
-        trips = db.query(Trip).filter(Trip.status != 'completed').all()
-        return trips
+        # Query all trips with route relationship loaded
+        trips = db.query(Trip).options(
+            selectinload(Trip.route),
+            selectinload(Trip.bus)
+        ).all()
+        
+        # Build response with route_name
+        response_data = []
+        for trip in trips:
+            trip_data = {
+                "id": trip.id,
+                "date": trip.date,
+                "status": trip.status,
+                "ETA": trip.ETA,
+                "bus_id": trip.bus_id,
+                "route_id": trip.route_id,
+                "route_name": trip.route.name if trip.route else None,
+                # Add any other fields your TripResponse needs
+            }
+            response_data.append(trip_data)
+        
+        return response_data
+         
     except Exception as e:
-        print("Error fetching trips:", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f'Internal Server Error: {str(e)}'
+        )
 
 """@router.get('/get_trip/{id}', status_code=status.HTTP_200_OK)
 def getTrip(id: int, db: db_dependency, user = Depends(get_user) ):
@@ -126,28 +168,24 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
         
         # Check if user is already registered for this route (semester-long)
         route_registration = db.query(Registered).filter(
-            Registered.student_id == user.id,
+            Registered.student_id == user['id'],
             Registered.route_id == trip.route_id
         ).first()
         
         if route_registration:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail='You are already registered for this route for the semester. No need to reserve individual trips.'
-            )
+            return {'message':'You are already registered for this route for the semester. No need to reserve individual trips.' }
+            
         
         # Check if user already reserved this specific trip
         existing_reservation = db.query(TripReservation).filter(
-            TripReservation.student_id == user.id,
+            TripReservation.student_id == user['id'],
             TripReservation.trip_id == trip_id,
             TripReservation.status == 'confirmed'
         ).first()
         
         if existing_reservation:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail='You have already reserved a seat for this trip'
-            )
+            return {'message': 'You have already reserved a seat for this trip'}
+            
         
         total_seats = trip.bus.no_seats
         
@@ -172,7 +210,7 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
         
         # Create one-time reservation
         new_reservation = TripReservation(
-            student_id=user.id,
+            student_id=user['id'],
             trip_id=trip_id,
             status='confirmed'
         )
@@ -196,7 +234,7 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
         print(f"Error reserving seat: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail='Internal Server Error'
+            detail=f'Internal Server Error {str(e)}'
         )
     
 @router.delete('/cancel_reservation/{trip_id}', status_code=status.HTTP_200_OK)
@@ -207,7 +245,7 @@ async def cancel_reservation(trip_id: int, db: db_dependency, user = Depends(get
     
     try:
         reservation = db.query(TripReservation).filter(
-            TripReservation.student_id == user.id,
+            TripReservation.student_id == user['id'],
             TripReservation.trip_id == trip_id,
             TripReservation.status == 'confirmed'
         ).first()
@@ -234,8 +272,8 @@ async def cancel_reservation(trip_id: int, db: db_dependency, user = Depends(get
             detail='Internal Server Error'
         )
     
-    
-@router.get("/my_reviews", response_model=List[RatingResponse])
+
+@router.get("/my_reviews")
 def get_my_reviews(
     db: db_dependency,
     user=Depends(get_user)
@@ -247,21 +285,20 @@ def get_my_reviews(
         )
 
     try:
-        reviews = db.query(Rating).filter(Rating.user_id == user.id).all()
+        reviews = db.query(Rating).filter(Rating.user_id == user['id']).all()
 
+        # If no reviews, return empty list (not a dict)
         if not reviews:
-            return {"message": "You have no reviews yet"}
+            return []
 
-        return {"reviews": reviews}
+        # Return the list directly, not wrapped in a dict
+        return reviews
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching reviews: {str(e)}"
         )
-    
-
-
 @router.get(
     "/getTrips_for_feedback",
     response_model=List[TripResponse]
@@ -274,16 +311,21 @@ def get_feedback_trips(db: db_dependency, user=Depends(get_user)):
         )
 
     try:
-        now = datetime.now()
+        now = datetime.now().date()  # Get only the date part
         five_days_ago = now - timedelta(days=5)
 
         stmt = (
             select(Trip)
-            .join(Registered, Trip.id == Registered.trip_id)
+            .join(Route, Trip.route_id == Route.id)  # Join through Route
+            .join(Registered, Registered.route_id == Route.id)  # Then to Registered
             .where(
-                (Registered.student_id == user.id)
+                (Registered.student_id == user['id'])
                 & (Trip.date < now)
                 & (Trip.date > five_days_ago)
+            )
+            .options(
+                selectinload(Trip.route),
+                selectinload(Trip.bus)
             )
         )
 
@@ -292,14 +334,28 @@ def get_feedback_trips(db: db_dependency, user=Depends(get_user)):
         if not trips:
             return []
 
-        return trips
+        # Build response with route_name
+        response_data = []
+        for trip in trips:
+            trip_data = {
+                "id": trip.id,
+                "date": trip.date,
+                "status": trip.status,
+                "ETA": trip.ETA,
+                "bus_id": trip.bus_id,
+                "route_id": trip.route_id,
+                "route_name": trip.route.name if trip.route else None,
+            }
+            response_data.append(trip_data)
+
+        return response_data
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching trips: {str(e)}"
         )
-
+    
 
 @router.post("/rate_trip")
 def rate_trip(rating: RatingRequest, db: db_dependency, user=Depends(get_user)):
@@ -313,7 +369,7 @@ def rate_trip(rating: RatingRequest, db: db_dependency, user=Depends(get_user)):
     try:
         # Optional: Prevent duplicate rating
         existing = db.query(Rating).filter(
-            Rating.user_id == user.id,
+            Rating.user_id == user['id'],
             Rating.trip_id == rating.trip_id
         ).first()
         if existing:
@@ -323,7 +379,7 @@ def rate_trip(rating: RatingRequest, db: db_dependency, user=Depends(get_user)):
             )
 
         new_rating = Rating(
-            user_id=user.id,
+            user_id=user['id'],
             trip_id=rating.trip_id,
             cleanliness=rating.cleanliness,
             driver_rating=rating.driver_rating,

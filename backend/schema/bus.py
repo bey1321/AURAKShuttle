@@ -16,3 +16,11 @@ class BusUpdateRequst(BaseModel):
     model: str = None
     manufacturer: str = None
     status: str =None
+
+class BusResponse(BaseModel):
+    id: int
+    plate_num: str 
+    no_seats: int 
+    model: str 
+    manufacturer: str
+    status: str 

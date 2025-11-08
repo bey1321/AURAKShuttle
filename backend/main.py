@@ -8,24 +8,22 @@ from routes.driver import router as driver
 from routes.lostfound import router as lostfound
 
 from middleware.auth import AuthMiddleware
-from fastapi.middleware.cors import CORSMiddleware
 
 from dotenv import load_dotenv
 load_dotenv()
 
+
 app = FastAPI()
+
+app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # or "*" temporarily
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-app.add_middleware(AuthMiddleware)
-
 app.include_router(auth)
 app.include_router(admin)
 app.include_router(student)

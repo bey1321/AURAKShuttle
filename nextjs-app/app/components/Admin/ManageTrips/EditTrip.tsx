@@ -18,7 +18,7 @@ import {
   Button,
 } from "../../ui";
 import MultiSelect from "../../MultiSelect";
-import { getTerminals } from "../../../data/database";
+import { adminAPI } from "../../../lib/api";
 
 interface TripFormDialogProps {
   open: boolean;
@@ -57,11 +57,17 @@ export function EditTrip({
     const fetchTerminals = async () => {
       try {
         setLoadingTerminals(true);
-        const data = await getTerminals();
-        setTerminals(data);
-      } catch (error) {
+        const data = await adminAPI.getTerminals();
+        const mappedTerminals: Terminal[] = data.map((t: any) => ({
+          id: t.id,
+          terminalName: t.terminalName,
+          terminal: t.terminalName,
+          city: t.city,
+        }));
+        setTerminals(mappedTerminals);
+      } catch (error: any) {
         console.error("Error fetching terminals:", error);
-        alert("Failed to load terminals. Please try again.");
+        alert(error?.message || "Failed to load terminals. Please try again.");
       } finally {
         setLoadingTerminals(false);
       }

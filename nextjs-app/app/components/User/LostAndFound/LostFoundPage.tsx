@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../../ui";
-import LostFoundAPI from "../../../lib/lostFound"; // ✅ Correct import
 import { lostFoundAPI } from "../../../lib/api";
 
 // ✅ Backend-aligned interface
@@ -78,11 +77,12 @@ export function LostFoundPage() {
   // ✅ Claim found item
   const handleApproveClaim = async (item: LostFoundItem) => {
     try {
-      await LostFoundAPI.makeClaim(item.id);
+      await lostFoundAPI.claimItem(item.id);
       alert("✅ Claim made successfully!");
       fetchItems();
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Failed to make claim:", err);
+      alert(err?.message || "Failed to make claim. Please try again.");
     }
   };
 
@@ -106,15 +106,32 @@ export function LostFoundPage() {
   const handleReportSubmit = async () => {
     try {
       if (reportType === "Lost") {
-        await LostFoundAPI.createLostItem(newItemData);
+        await lostFoundAPI.reportLostItem({
+          obj_name: newItemData.obj_name,
+          obj_description: newItemData.obj_description,
+          obj_type: newItemData.obj_type,
+          trip_id: newItemData.trip_id,
+        });
       } else {
-        await LostFoundAPI.createFoundItem(newItemData);
+        await lostFoundAPI.reportFoundItem({
+          obj_name: newItemData.obj_name,
+          obj_description: newItemData.obj_description,
+          obj_type: newItemData.obj_type,
+          trip_id: newItemData.trip_id,
+        });
       }
       alert(`${reportType} item reported successfully!`);
       setShowReportDialog(false);
+      setNewItemData({
+        obj_name: "",
+        obj_description: "",
+        obj_type: "",
+        trip_id: 0,
+      });
       fetchItems();
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Failed to report item:", err);
+      alert(err?.message || "Failed to report item. Please try again.");
     }
   };
 

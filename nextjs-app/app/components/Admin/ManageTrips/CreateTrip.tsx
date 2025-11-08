@@ -20,9 +20,10 @@ import { Terminal } from "../../../data/types";
 
 interface TripFormProps {
   onCancel: () => void;
+  onSuccess?: () => void;
 }
 
-export default function CreateTrip({ onCancel }: TripFormProps) {
+export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [buses, setBuses] = useState<any[]>([]);
@@ -95,7 +96,11 @@ export default function CreateTrip({ onCancel }: TripFormProps) {
 
       await adminAPI.createSingleTrip(payload);
       alert("✅ Trip created successfully!");
-      onCancel();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onCancel();
+      }
     } catch (e: any) {
       alert(e?.message || "❌ Failed to create trip");
     }

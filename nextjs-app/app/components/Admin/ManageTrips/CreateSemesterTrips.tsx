@@ -24,8 +24,9 @@ const semesterSchema = z.object({
   start_time: z.string().min(1, "Start time is required"),
   end_time: z.string().min(1, "End time is required"),
   type: z.string().min(1, "Type is required"),
-  bus_id: z.number().min(1, "Select a bus"),
-  driver_id: z.number().min(1, "Select a driver"),
+  bus_id: z.number().optional(),
+  driver_id: z.number().optional(),
+  start_terminal_id: z.number().min(1, "Select a start terminal"),
   terminals: z.array(z.number()).min(1, "Select at least one terminal"),
 });
 
@@ -33,8 +34,12 @@ type SemesterForm = z.infer<typeof semesterSchema>;
 
 export default function CreateSemesterTrips({
   onCancel,
+  editingRoute,
+  onSuccess,
 }: {
   onCancel: () => void;
+  editingRoute?: any;
+  onSuccess?: () => void;
 }) {
   const {
     register,
@@ -55,6 +60,7 @@ export default function CreateSemesterTrips({
   const [terminals, setTerminals] = useState<any[]>([]);
   const [buses, setBuses] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const daysOfWeek = watch("days_of_week");
   const selectedTerminals = watch("terminals");
 
@@ -75,18 +81,68 @@ export default function CreateSemesterTrips({
     })();
   }, []);
 
+  // Populate form when editing
+  useEffect(() => {
+    if (editingRoute) {
+      const route = editingRoute;
+      const terminalIds = route.terminals?.map((tt: any) => 
+        typeof tt === "number" ? tt : (tt.terminal_id || tt.terminal?.id)
+      ) || [];
+      
+      setValue("name", route.name || "");
+      setValue("type", route.type || "regular");
+      setValue("start_time", route.start_time || "");
+      setValue("end_time", route.end_time || "");
+      setValue("days_of_week", route.days_of_week || []);
+      setValue("start_terminal_id", route.start_terminal_id || route.start_terminal?.id || 0);
+      setValue("terminals", terminalIds);
+      
+      // Set dates - you might need to adjust these based on your needs
+      // For editing, we might need to get the date range from the trips
+      if (route.start_date) {
+        setValue("start_date", route.start_date);
+      }
+      if (route.end_date) {
+        setValue("end_date", route.end_date);
+      }
+      
+      if (route.bus_id) {
+        setValue("bus_id", route.bus_id);
+      }
+      if (route.driver_id) {
+        setValue("driver_id", route.driver_id);
+      }
+    }
+  }, [editingRoute, setValue]);
+
   const submit = async (data: SemesterForm) => {
     try {
+      setSubmitting(true);
       const payload = {
         ...data,
-        start_terminal_id: data.terminals[0], // first terminal as start
+        start_terminal_id: data.start_terminal_id || data.terminals[0], // use start_terminal_id or first terminal
         terminals: data.terminals, // keep as array of numbers
       };
-      await adminAPI.createSemesterTrips(payload);
-      alert("✅ Semester trips created successfully!");
-      onCancel();
+
+      if (editingRoute) {
+        // Update existing route
+        await adminAPI.updateSemesterTrip(editingRoute.id, payload);
+        alert("✅ Semester route updated successfully!");
+      } else {
+        // Create new route
+        await adminAPI.createSemesterTrips(payload);
+        alert("✅ Semester trips created successfully!");
+      }
+      
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onCancel();
+      }
     } catch (e: any) {
-      alert(e?.message || "❌ Failed to create semester trips");
+      alert(e?.message || `❌ Failed to ${editingRoute ? "update" : "create"} semester trips`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -138,20 +194,25 @@ export default function CreateSemesterTrips({
       {/* Dates */}
       <div className="flex gap-2">
         <div className="flex-1 space-y-2">
-          <Label>Start Date</Label>
+          <Label>Start Date {editingRoute && "(for regenerating trips)"}</Label>
           <Input type="date" {...register("start_date")} />
           {errors.start_date && (
             <p className="text-sm text-red-500">{errors.start_date.message}</p>
           )}
         </div>
         <div className="flex-1 space-y-2">
-          <Label>End Date</Label>
+          <Label>End Date {editingRoute && "(for regenerating trips)"}</Label>
           <Input type="date" {...register("end_date")} />
           {errors.end_date && (
             <p className="text-sm text-red-500">{errors.end_date.message}</p>
           )}
         </div>
       </div>
+      {editingRoute && (
+        <p className="text-xs text-muted-foreground">
+          Note: Updating the route will regenerate trips for the specified date range. Completed trips will be preserved.
+        </p>
+      )}
 
       {/* Days of Week */}
       <div className="space-y-2">
@@ -299,9 +360,38 @@ export default function CreateSemesterTrips({
         )}
       </div>
 
+      {/* Start Terminal */}
+      <div className="space-y-2">
+        <Label>Start Terminal</Label>
+        <Controller
+          control={control}
+          name="start_terminal_id"
+          render={({ field }) => (
+            <Select
+              onValueChange={(v) => field.onChange(Number(v))}
+              value={field.value?.toString() ?? ""}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Start Terminal" />
+              </SelectTrigger>
+              <SelectContent>
+                {terminals.map((t) => (
+                  <SelectItem key={t.id} value={t.id.toString()}>
+                    {t.terminalName || t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.start_terminal_id && (
+          <p className="text-sm text-red-500">{errors.start_terminal_id.message}</p>
+        )}
+      </div>
+
       {/* Terminals */}
       <div className="space-y-2">
-        <Label>Terminals</Label>
+        <Label>Terminals (including start terminal)</Label>
         <div className="flex flex-wrap gap-2">
           {terminals.map((t) => (
             <button
@@ -325,14 +415,17 @@ export default function CreateSemesterTrips({
 
       {/* Buttons */}
       <div className="flex gap-2 pt-4">
-        <Button type="submit" className="flex-1">
-          Create Semester Trips
+        <Button type="submit" className="flex-1" disabled={submitting}>
+          {submitting 
+            ? (editingRoute ? "Updating..." : "Creating...") 
+            : (editingRoute ? "Update Route" : "Create Semester Trips")}
         </Button>
         <Button
           type="button"
           className="flex-1"
           variant="outline"
           onClick={onCancel}
+          disabled={submitting}
         >
           Cancel
         </Button>

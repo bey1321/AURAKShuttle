@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 class TripReservation(Base):
-    __tablename__ = "trip_reservation"
+    __tablename__ = "tripreservation"
     
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey('user.id'), nullable=False)

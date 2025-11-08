@@ -20,7 +20,6 @@ class User(Base):
 
     phone = Column(Integer, nullable = True)
 
-    drives = relationship('DriverTrip', back_populates='driver')
     
     claim = relationship('Claim',back_populates='claimer')
     lost = relationship('UserLost', back_populates='user')
@@ -29,5 +28,7 @@ class User(Base):
 
     route = relationship('Registered', back_populates='student')
     trip_reservations = relationship('TripReservation', back_populates='student')
+
+    drives_trip = relationship('Trip', back_populates='driver')
 
 

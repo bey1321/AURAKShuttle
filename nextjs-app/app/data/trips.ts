@@ -10,19 +10,33 @@ function mapTripToFrontend(trip: BackendTrip | any): Trip {
 
   // Extract terminal information
   const startTerminal = route.start_terminal?.terminalName || "Unknown";
-  const startTime = route.start_time || "";
-  const endTime = route.end_time || "";
+  const startTime = route.start_time || trip.start_time || "";
+  const endTime = route.end_time || trip.end_time || "";
 
   // Format date
   const dateStr = trip.date
     ? typeof trip.date === "string"
-      ? trip.date
-      : trip.date.split("T")[0]
+      ? trip.date.split("T")[0] // Handle ISO date strings
+      : trip.date
     : "";
 
-  // Extract middle terminals - we'll need to get this from the route terminals
-  // For now, we'll use an empty array as the backend doesn't directly return this
+  // Extract middle terminals from route.terminals array
+  // The structure is: route.terminals = [{ terminal: { terminalName: "..." }, terminal_id: ... }]
   const middleTerminals: string[] = [];
+  if (route.terminals && Array.isArray(route.terminals)) {
+    route.terminals.forEach((tt: any) => {
+      // Skip the start terminal (it's already in startTerminal)
+      const terminalName = tt.terminal?.terminalName;
+      if (terminalName && terminalName !== startTerminal) {
+        middleTerminals.push(terminalName);
+      }
+    });
+  }
+
+  // Get the last terminal as stop terminal (or use start terminal if no others)
+  const stopTerminal = middleTerminals.length > 0 
+    ? middleTerminals[middleTerminals.length - 1]
+    : startTerminal;
 
   // Determine status
   const status = trip.status || "scheduled";
@@ -33,7 +47,14 @@ function mapTripToFrontend(trip: BackendTrip | any): Trip {
     frontendStatus = "Completed";
   } else if (status === "in_progress" || status === "In Progress") {
     frontendStatus = "In Progress";
+  } else if (status === "scheduled") {
+    frontendStatus = "Upcoming";
   }
+
+  // Extract driver name if available
+  const driverName = trip.driver
+    ? `${trip.driver.first_name || ""} ${trip.driver.last_name || ""}`.trim()
+    : trip.driver_id?.toString() || null;
 
   return {
     id: trip.id,
@@ -43,13 +64,13 @@ function mapTripToFrontend(trip: BackendTrip | any): Trip {
     bus: bus.id
       ? `Bus ${bus.plate_num || bus.id}`
       : trip.bus_id?.toString() || null,
-    driver: trip.driver_id?.toString() || null,
+    driver: driverName,
     startTerminal: startTerminal,
     middleTerminals: middleTerminals,
-    stopTerminal: route.start_terminal?.terminalName || "Unknown", // Will need proper mapping
+    stopTerminal: stopTerminal,
     startTime: startTime,
     endTime: endTime,
-    type: (route.type || "regular") as Trip["type"],
+    type: (route.type || trip.type || "regular") as Trip["type"],
     passengers: 0, // Will need to be calculated from reservations
   };
 }

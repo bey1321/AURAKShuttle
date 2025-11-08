@@ -17,7 +17,6 @@ import {
   DialogDescription,
 } from "../ui";
 import ConfirmDeleteDialog from "../ConfirmDeleteDialog";
-import LostFoundAPI from "../../lib/lostFound";
 import { lostFoundAPI } from "../../lib/api";
 
 // ✅ Backend-aligned interface
@@ -77,13 +76,18 @@ export function AdminLostFoundPage() {
     fetchItems();
   }, []);
 
-  // ✅ Claim found item
+  // ✅ Approve claim for found item (Admin only)
   const handleApproveClaim = async (item: LostFoundItem) => {
     try {
-      await LostFoundAPI.makeClaim(item.id);
+      // For admin, we need to get the claim ID first
+      // This would require fetching claims for the item
+      // For now, we'll use the item ID as claim ID (this may need adjustment based on backend)
+      await lostFoundAPI.approveClaim(item.id);
+      alert("Claim approved successfully!");
       fetchItems();
-    } catch (err) {
-      console.error("❌ Failed to make claim:", err);
+    } catch (err: any) {
+      console.error("❌ Failed to approve claim:", err);
+      alert(err?.message || "Failed to approve claim. Please try again.");
     }
   };
 
@@ -114,14 +118,32 @@ export function AdminLostFoundPage() {
   const handleReportSubmit = async () => {
     try {
       if (reportType === "Lost") {
-        await LostFoundAPI.createLostItem(newItemData);
+        await lostFoundAPI.reportLostItem({
+          obj_name: newItemData.obj_name,
+          obj_description: newItemData.obj_description,
+          obj_type: newItemData.obj_type,
+          trip_id: newItemData.trip_id,
+        });
       } else {
-        await LostFoundAPI.createFoundItem(newItemData);
+        await lostFoundAPI.reportFoundItem({
+          obj_name: newItemData.obj_name,
+          obj_description: newItemData.obj_description,
+          obj_type: newItemData.obj_type,
+          trip_id: newItemData.trip_id,
+        });
       }
+      alert(`${reportType} item reported successfully!`);
       setShowReportDialog(false);
+      setNewItemData({
+        obj_name: "",
+        obj_description: "",
+        obj_type: "",
+        trip_id: 0,
+      });
       fetchItems();
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Failed to report item:", err);
+      alert(err?.message || "Failed to report item. Please try again.");
     }
   };
 

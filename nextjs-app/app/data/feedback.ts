@@ -5,12 +5,12 @@ import { tripAPI } from "../lib/api";
 export async function getMyFeedback(): Promise<Feedback[]> {
   try {
     const data = await tripAPI.getMyReviews();
-    // The API returns { reviews: [...] } or { message: "..." }
-    if (data.reviews && Array.isArray(data.reviews)) {
-      return data.reviews.map((review: any) => ({
+    // The API returns an array directly (not wrapped in an object)
+    if (Array.isArray(data)) {
+      return data.map((review: any) => ({
         id: review.id,
         trip_id: review.trip_id,
-        route: review.trip?.route_name || "Unknown Route",
+        route: review.trip?.route_name || review.trip?.route?.name || "Unknown Route",
         date: review.trip?.date || "",
         comment: review.comment || "",
         cleanliness: review.cleanliness,

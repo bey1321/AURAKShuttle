@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Time
+from sqlalchemy import Column, String, Integer, ForeignKey, Time,JSON
 from sqlalchemy.orm import relationship
 from ..setup import Base
 
@@ -10,8 +10,8 @@ class Route(Base):
     
     start_terminal_id = Column(Integer, ForeignKey('terminal.id'))
     
-    start_terminal = relationship('Terminal', foreign_keys=[start_terminal_id])
-    terminal = relationship('TripTerminal', back_populates='trip')
+    start_terminal = relationship('Terminal', foreign_keys=[start_terminal_id], back_populates='start_trip')
+    terminals = relationship('TripTerminal', back_populates='route')
     
     status = Column(String, default='active')  # active/inactive
     
@@ -22,3 +22,5 @@ class Route(Base):
 
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable = False)
+
+    days_of_week = Column(JSON)

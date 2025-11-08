@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Edit, Trash2, Plus, Search } from "lucide-react";
-import { adminAPI, tripAPI } from "../../../lib/api";
+import { adminAPI } from "../../../lib/api";
 import {
   Table,
   TableBody,
@@ -16,11 +16,6 @@ import {
   CardTitle,
   CardDescription,
   Input,
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
   Button,
   Dialog,
   DialogContent,
@@ -34,58 +29,44 @@ import CreateSemesterTrips from "./CreateSemesterTrips";
 
 export function AdminManageTrips() {
   const [allTrips, setAllTrips] = useState<any[]>([]);
-  const [semesterTrips, setSemesterTrips] = useState<any[]>([]);
-  const [singleTrips, setSingleTrips] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<any[]>([]);
   const [terminalsMap, setTerminalsMap] = useState<Record<number, string>>({});
   const [busesMap, setBusesMap] = useState<Record<number, string>>({});
-  const [driversMap, setDriversMap] = useState<Record<number, string>>({});
-
+  // const [driversMap, setDriversMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
 
   const [showCreateSingle, setShowCreateSingle] = useState(false);
   const [showCreateSemester, setShowCreateSemester] = useState(false);
 
   const [tripToDelete, setTripToDelete] = useState<any | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [routeToDelete, setRouteToDelete] = useState<any | null>(null);
+  const [deleteRouteDialogOpen, setDeleteRouteDialogOpen] = useState(false);
+  const [editingRoute, setEditingRoute] = useState<any | null>(null);
 
+  // Load all trips, semester routes, and maps
   const loadTrips = async () => {
     try {
       setLoading(true);
-      const trips = await adminAPI.getTrips();
-      setAllTrips(trips);
-
-      // Fetch buses, drivers, and terminals for mapping
-      const [buses, drivers, terminals] = await Promise.all([
+      // const [routesData, tripsData, buses, drivers, terminals] = await Promise.all([
+      const [routesData, tripsData, buses, terminals] = await Promise.all([
+        adminAPI.getRoutes(),
+        adminAPI.getTrips(),
         adminAPI.getBuses(),
-        adminAPI.getDrivers(),
+        // adminAPI.getDrivers(),
         adminAPI.getTerminals(),
       ]);
 
-      // Create lookup maps
-      setBusesMap(
-        Object.fromEntries(buses.map((b: any) => [b.id, b.plate_num]))
-      );
-      setDriversMap(
-        Object.fromEntries(
-          drivers.map((d: any) => [d.id, `${d.first_name} ${d.last_name}`])
-        )
-      );
-      setTerminalsMap(
-        Object.fromEntries(terminals.map((t: any) => [t.id, t.terminalName]))
-      );
+      setRoutes(Array.isArray(routesData) ? routesData : []);
+      setAllTrips(Array.isArray(tripsData) ? tripsData : []);
 
-      // Separate trips
-      const semester = trips.filter(
-        (t: any) => t.type === "academic" || t.type === "semester"
-      );
-      const single = trips.filter((t: any) => t.type === "regular");
-      setSemesterTrips(semester);
-      setSingleTrips(single);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to load trips");
+      setBusesMap(Object.fromEntries(buses.map((b: any) => [b.id, b.plate_num])));
+      // setDriversMap(Object.fromEntries(drivers.map((d: any) => [d.id, `${d.first_name} ${d.last_name}`])));
+      setTerminalsMap(Object.fromEntries(terminals.map((t: any) => [t.id, t.terminalName])));
+    } catch (e: any) {
+      console.error("Error loading trips:", e);
+      alert(e?.message || "Failed to load trips");
     } finally {
       setLoading(false);
     }
@@ -95,11 +76,11 @@ export function AdminManageTrips() {
     loadTrips();
   }, []);
 
+  // --- Delete Trip ---
   const handleDeleteClick = (trip: any) => {
     setTripToDelete(trip);
     setDeleteDialogOpen(true);
   };
-
   const confirmDelete = async () => {
     if (!tripToDelete) return;
     try {
@@ -112,51 +93,102 @@ export function AdminManageTrips() {
       setDeleteDialogOpen(false);
     }
   };
-
   const cancelDelete = () => {
     setTripToDelete(null);
     setDeleteDialogOpen(false);
   };
 
+  // --- Delete Route ---
+  const handleDeleteRouteClick = (route: any) => {
+    setRouteToDelete(route);
+    setDeleteRouteDialogOpen(true);
+  };
+  const confirmDeleteRoute = async () => {
+    if (!routeToDelete) return;
+    try {
+      await adminAPI.deleteSemesterTrip(routeToDelete.id);
+      await loadTrips();
+      alert("Route and all related trips deleted successfully");
+    } catch (e: any) {
+      alert(e?.message || "Failed to delete route");
+    } finally {
+      setRouteToDelete(null);
+      setDeleteRouteDialogOpen(false);
+    }
+  };
+  const cancelDeleteRoute = () => {
+    setRouteToDelete(null);
+    setDeleteRouteDialogOpen(false);
+  };
+
+  // --- Edit Route ---
+  const handleEditRoute = (route: any) => {
+    setEditingRoute(route);
+    setShowCreateSemester(true);
+  };
+
+  // --- Filters ---
   const filterTrips = (trips: any[]) =>
-    trips.filter((trip) =>
-      trip.name?.toLowerCase().includes(search.toLowerCase())
+    trips.filter((trip) => {
+      const routeName = trip.route?.name || "";
+      return routeName.toLowerCase().includes(search.toLowerCase());
+    });
+  const filterRoutes = (routesList: any[]) =>
+    routesList.filter((route) => route.name?.toLowerCase().includes(search.toLowerCase()));
+
+  // --- Render Terminals ---
+  const renderTerminals = (terminalsArray: any[]) => {
+    if (!Array.isArray(terminalsArray)) return "—";
+    return terminalsArray
+      .map((t: any) => t.terminal?.terminalName || terminalsMap[t.terminal_id] || "—")
+      .filter((name: string) => name !== "—")
+      .join(", ") || "—";
+  };
+
+  // --- Render Single Trip Row ---
+  const renderRow = (trip: any) => {
+    const route = trip.route || {};
+    const bus = trip.bus || {};
+    // const driver = trip.driver || null;
+
+    const routeName = route.name || "Unknown Route";
+    const routeType = route.type || "Regular";
+    const startTime = route.start_time || "—";
+    const endTime = route.end_time || "—";
+    const startTerminalName = route.start_terminal?.terminalName || terminalsMap[route.start_terminal_id] || "—";
+    const terminals = route.terminals || [];
+    const busPlate = bus.plate_num || busesMap[trip.bus_id] || "—";
+    // const driverName = driver
+    //   ? `${driver.first_name || ""} ${driver.last_name || ""}`.trim() || "—"
+    //   : driversMap[trip.driver_id] || "—";
+    const formattedDate = trip.date
+    ? new Date(trip.date).toLocaleDateString()
+    : "—";    
+
+    return (
+      <TableRow key={trip.id}>
+        <TableCell>{trip.id}</TableCell>
+        <TableCell>{routeName}</TableCell>
+        <TableCell>{routeType}</TableCell>
+        <TableCell>{trip.status || "scheduled"}</TableCell>
+        <TableCell>{busPlate}</TableCell>
+        {/* <TableCell>{driverName}</TableCell> */}
+        <TableCell>{startTerminalName}</TableCell>
+        <TableCell>{renderTerminals(terminals)}</TableCell>
+        <TableCell>{formattedDate}</TableCell>
+        <TableCell>{startTime}</TableCell>
+        <TableCell>{endTime}</TableCell>
+        <TableCell className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => alert(`Edit trip ${routeName} TBD`)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => handleDeleteClick(trip)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </TableCell>
+      </TableRow>
     );
-
-  const renderTerminals = (ids: number[]) =>
-    ids?.map((id) => terminalsMap[id] || "—").join(", ") || "—";
-
-  const renderRow = (trip: any) => (
-    <TableRow key={trip.id}>
-      <TableCell>{trip.id}</TableCell>
-      <TableCell>{trip.name}</TableCell>
-      <TableCell>{trip.type}</TableCell>
-      <TableCell>{trip.status}</TableCell>
-      <TableCell>{busesMap[trip.bus_id] || "—"}</TableCell>
-      <TableCell>{driversMap[trip.driver_id] || "—"}</TableCell>
-      <TableCell>{terminalsMap[trip.start_terminal_id] || "—"}</TableCell>
-      <TableCell>{renderTerminals(trip.terminals)}</TableCell>
-      <TableCell>{new Date(trip.date).toLocaleDateString()}</TableCell>
-      <TableCell>{trip.start_time}</TableCell>
-      <TableCell>{trip.end_time}</TableCell>
-      <TableCell className="flex gap-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => alert(`Edit trip ${trip.name} TBD`)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => handleDeleteClick(trip)}
-        >
-          <Trash2 className="w-4 h-4 text-destructive" />
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
+  };
 
   return (
     <div className="p-6 space-y-8">
@@ -173,7 +205,7 @@ export function AdminManageTrips() {
         </div>
       </div>
 
-      {/* Search & Filter */}
+      {/* Search */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="relative w-full sm:w-[300px]">
           <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -184,107 +216,137 @@ export function AdminManageTrips() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="semester">Semester</SelectItem>
-            <SelectItem value="single">Single</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Semester Trips */}
-      {(filterType === "all" || filterType === "semester") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Semester Trips</CardTitle>
-            <CardDescription>Recurring semester-wide trips</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filterTrips(semesterTrips).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No semester trips found.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Bus</TableHead>
-                    <TableHead>Driver</TableHead>
-                    <TableHead>Start Terminal</TableHead>
-                    <TableHead>Terminals</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>End Time</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filterTrips(semesterTrips).map(renderRow)}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Semester Routes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Semester-Wide Trips</CardTitle>
+          <CardDescription>Recurring semester-wide routes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading routes...</p>
+          ) : filterRoutes(routes).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No semester-wide trips found.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Days of Week</TableHead>
+                  <TableHead>Start Terminal</TableHead>
+                  <TableHead>Terminals</TableHead>
+                  <TableHead>Start Time</TableHead>
+                  <TableHead>End Time</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filterRoutes(routes).map((route: any) => {
+                  const startTerminalName = route.start_terminal?.terminalName || "—";
+                  const terminals = route.terminals || [];
+                  const daysOfWeek = Array.isArray(route.days_of_week)
+                    ? route.days_of_week.join(", ")
+                    : "—";
 
-      {/* Single Trips */}
-      {(filterType === "all" || filterType === "single") && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Single Trips</CardTitle>
-            <CardDescription>One-time scheduled trips</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filterTrips(singleTrips).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No single trips found.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Bus</TableHead>
-                    <TableHead>Driver</TableHead>
-                    <TableHead>Start Terminal</TableHead>
-                    <TableHead>Terminals</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>End Time</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>{filterTrips(singleTrips).map(renderRow)}</TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  return (
+                    <TableRow key={route.id}>
+                      <TableCell>{route.id}</TableCell>
+                      <TableCell>{route.name || "—"}</TableCell>
+                      <TableCell>{route.type || "—"}</TableCell>
+                      <TableCell>{daysOfWeek}</TableCell>
+                      <TableCell>{startTerminalName}</TableCell>
+                      <TableCell>{renderTerminals(terminals)}</TableCell>
+                      <TableCell>{route.start_time || "—"}</TableCell>
+                      <TableCell>{route.end_time || "—"}</TableCell>
+                      <TableCell className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleEditRoute(route)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteRouteClick(route)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Create Semester Trips Dialog */}
+      {/* All Single Trips */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Trips</CardTitle>
+          <CardDescription>All scheduled trips</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading trips...</p>
+          ) : filterTrips(allTrips).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No trips found.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Bus</TableHead>
+                  {/* <TableHead>Driver</TableHead> */}
+                  <TableHead>Start Terminal</TableHead>
+                  <TableHead>Terminals</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Start Time</TableHead>
+                  <TableHead>End Time</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>{filterTrips(allTrips).map(renderRow)}</TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create/Edit Semester Dialog */}
       {showCreateSemester && (
-        <Dialog open={showCreateSemester} onOpenChange={setShowCreateSemester}>
+        <Dialog 
+          open={showCreateSemester} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowCreateSemester(false);
+              setEditingRoute(null);
+            }
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Create Semester Trips</DialogTitle>
+              <DialogTitle>
+                {editingRoute ? "Edit Semester Trip Route" : "Create Semester Trips"}
+              </DialogTitle>
               <DialogDescription>
-                Generate recurring trips for the semester.
+                {editingRoute 
+                  ? "Update the semester-wide route configuration."
+                  : "Generate recurring trips for the semester."}
               </DialogDescription>
             </DialogHeader>
             <CreateSemesterTrips
-              onCancel={() => setShowCreateSemester(false)}
+              editingRoute={editingRoute}
+              onCancel={() => {
+                setShowCreateSemester(false);
+                setEditingRoute(null);
+              }}
+              onSuccess={() => {
+                setShowCreateSemester(false);
+                setEditingRoute(null);
+                loadTrips();
+              }}
             />
           </DialogContent>
         </Dialog>
@@ -296,24 +358,40 @@ export function AdminManageTrips() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create Single Trip</DialogTitle>
-              <DialogDescription>
-                Configure and create a one-time trip.
-              </DialogDescription>
+              <DialogDescription>Configure and create a one-time trip.</DialogDescription>
             </DialogHeader>
-            <CreateTrip onCancel={() => setShowCreateSingle(false)} />
+            <CreateTrip 
+              onCancel={() => setShowCreateSingle(false)}
+              onSuccess={() => {
+                setShowCreateSingle(false);
+                loadTrips();
+              }}
+            />
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Confirm Delete Dialog */}
+      {/* Confirm Delete Trip Dialog */}
       {tripToDelete && (
         <ConfirmDeleteDialog
           open={deleteDialogOpen}
           title={`Delete Trip`}
-          message={`Are you sure you want to delete trip ${tripToDelete.name}?`}
+          message={`Are you sure you want to delete trip ${tripToDelete.route?.name || tripToDelete.route_name || tripToDelete.id}?`}
           confirmLabel="Delete"
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
+        />
+      )}
+
+      {/* Confirm Delete Route Dialog */}
+      {routeToDelete && (
+        <ConfirmDeleteDialog
+          open={deleteRouteDialogOpen}
+          title={`Delete Semester Route`}
+          message={`Are you sure you want to delete the route "${routeToDelete.name}" and all related trips? This action cannot be undone.`}
+          confirmLabel="Delete Route"
+          onConfirm={confirmDeleteRoute}
+          onCancel={cancelDeleteRoute}
         />
       )}
     </div>

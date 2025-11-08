@@ -127,7 +127,8 @@ export const adminAPI = {
     apiCall<any[]>(`/admin/get_bus_assigned_trips/${busId}`),
 
   // Users
-  getUsers: () => apiCall<any[]>("/admin/users"),
+  getAllUsers: () => apiCall<any[]>("/admin/all_users"),
+  getUsers: () => apiCall<any[]>("/admin/all_users"), // Alias for compatibility
   createUser: (data: {
     email: string;
     password: string;
@@ -169,9 +170,34 @@ export const adminAPI = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  updateTerminal: (data: {
+    id: number;
+    terminalName?: string;
+    city?: string;
+  }) =>
+    apiCall<{ message: string }>("/admin/terminals", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteTerminal: (terminalId: number) =>
+    apiCall<{ message: string }>(`/admin/terminal/${terminalId}`, {
+      method: "DELETE",
+    }),
 
   // Trips
-  getTrips: () => apiCall<any[]>("/trip/all_trips"),
+  getTrips: async () => {
+    try {
+      const res = await apiCall<any>("/admin/all_trips");
+      // Normalize the response to always return an array
+      if (Array.isArray(res)) return res;
+      if (res && typeof res === "object" && Array.isArray((res as any).data)) return (res as any).data;
+      // If single object or null, wrap in array or return empty
+      return res ? [res] : [];
+    } catch (e) {
+      console.error("Error fetching trips:", e);
+      return [];
+    }
+  },
   updateTrip: (
     tripId: number,
     data: Partial<{
@@ -187,18 +213,14 @@ export const adminAPI = {
       terminals: number[];
     }>
   ) =>
-    apiCall<{ message: string; trip_id: number }>(
-      `/admin/update/trip/${tripId}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }
-    ),
+    apiCall<{ message: string; trip_id: number }>(`/admin/trip/${tripId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
   deleteTrip: (tripId: number) =>
-    apiCall<{ message: string; trip_id: number }>(
-      `/admin/delete/trip/${tripId}`,
-      { method: "DELETE" }
-    ),
+    apiCall<{ message: string; trip_id: number }>(`/admin/trip/${tripId}`, {
+      method: "DELETE",
+    }),
   createSingleTrip: (data: {
     date: string;
     start_time: string;
@@ -234,16 +256,56 @@ export const adminAPI = {
       semester_info: any;
       trip_details: any[];
       route_info: any;
-    }>("/admin/semester_trips", {
+    }>("/admin/semester_trip", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  updateSemesterTrip: (
+    routeId: number,
+    data: {
+      start_date: string;
+      end_date: string;
+      days_of_week: string[];
+      bus_id?: number;
+      driver_id?: number;
+      start_terminal_id: number;
+      start_time: string;
+      end_time: string;
+      type: string;
+      terminals: number[];
+      name: string;
+    }
+  ) =>
+    apiCall<{
+      message: string;
+      total_new_trips_created: number;
+      note: string;
+    }>(`/admin/semester_trip/${routeId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteSemesterTrip: (routeId: number) =>
+    apiCall<{
+      message: string;
+      deleted_trips_count: number;
+    }>(`/admin/semester_trip/${routeId}`, {
+      method: "DELETE",
+    }),
+    getRoutes: async () => {
+      try {
+        const res = await apiCall<any>("/admin/routes");
+        if (Array.isArray(res)) return res;
+        if (res && Array.isArray((res as any).data)) return (res as any).data;
+        return res ? [res] : [];
+      } catch (e) {
+        console.error("Error fetching routes:", e);
+        return [];
+      }
+    },
 };
-
-/* ---------------------- STUDENT/TRIP ---------------------- */
-export const tripAPI = {
-  getMyTrips: () => apiCall<any[]>("/trip/get_mytrips"),
-  getAllTrips: () => apiCall<any[]>("/trip/all_trips"),
+export const userAPI = {
+  getMyTrips: () => apiCall<any[]>("/user/get_mytrips"),
+  getAllTrips: () => apiCall<any[]>("/user/all_trips"),
   reserveSeat: (tripId: number) =>
     apiCall<{
       message: string;
@@ -251,12 +313,13 @@ export const tripAPI = {
       reservation_id: number;
       seats_remaining: number;
       total_seats: number;
-    }>(`/trip/reserve_seat/${tripId}`, { method: "POST" }),
+    }>(`/user/reserve_seat/${tripId}`, { method: "POST" }),
   cancelReservation: (tripId: number) =>
-    apiCall<{ message: string }>(`/trip/cancel_reservation/${tripId}`, {
+    apiCall<{ message: string }>(`/user/cancel_reservation/${tripId}`, {
       method: "DELETE",
     }),
-  getTripsForFeedback: () => apiCall<any[]>("/trip/getTrips_for_feedback"),
+  getMyReviews: () => apiCall<any[]>("/user/my_reviews"),
+  getTripsForFeedback: () => apiCall<any[]>("/user/gettrips_for_feedback"),
   rateTrip: (data: {
     trip_id: number;
     cleanliness: number;
@@ -264,11 +327,27 @@ export const tripAPI = {
     timeliness: number;
     comment: string;
   }) =>
-    apiCall<{ message: string }>("/trip/rate_trip", {
+    apiCall<{ message: string }>("/user/rate_trip", {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  getMyReviews: () => apiCall<any>("/trip/my_reviews"),
+};
+
+/* ---------------------- STUDENT/TRIP (Legacy - for backward compatibility) ---------------------- */
+export const tripAPI = {
+  getMyTrips: () => userAPI.getMyTrips(),
+  getAllTrips: () => userAPI.getAllTrips(),
+  reserveSeat: (tripId: number) => userAPI.reserveSeat(tripId),
+  cancelReservation: (tripId: number) => userAPI.cancelReservation(tripId),
+  getTripsForFeedback: () => userAPI.getTripsForFeedback(),
+  rateTrip: (data: {
+    trip_id: number;
+    cleanliness: number;
+    driver_rating: number;
+    timeliness: number;
+    comment: string;
+  }) => userAPI.rateTrip(data),
+  getMyReviews: () => userAPI.getMyReviews(),
 };
 
 /* ---------------------- DRIVER ---------------------- */
@@ -278,13 +357,14 @@ export const driverAPI = {
 
 /* ---------------------- LOST & FOUND ---------------------- */
 export const lostFoundAPI = {
-  getLostItems: () => apiCall<{
-    data: any; "lost items": any[] 
-}>("/lostfound/lost_item"),
+  getLostItems: () =>
+    apiCall<{
+      "lost items": any[];
+    }>("/lostfound/lost_item"),
   getFoundItems: () =>
     apiCall<{
-      data: any; found_items: any[] 
-}>("/lostfound/found_items"),
+      found_items: any[];
+    }>("/lostfound/found_items"),
 
   reportLostItem: (data: {
     obj_name: string;
@@ -322,4 +402,19 @@ export const lostFoundAPI = {
     apiCall<{ message: string }>(`/lostfound/claim/${itemId}`, {
       method: "POST",
     }),
+
+  // Admin Lost & Found routes
+  getAdminFoundAndClaims: () =>
+    apiCall<any[]>("/lostfound/admin/found_and_claim"),
+  approveClaim: (claimId: number) =>
+    apiCall<{ message: string }>(`/lostfound/admin/approve/claim/${claimId}`, {
+      method: "POST",
+    }),
+  markItemReceived: (studentId: number, claimId: number) =>
+    apiCall<{ message: string }>(
+      `/lostfound/admin/found_recieved/student/${studentId}/claim/${claimId}`,
+      {
+        method: "POST",
+      }
+    ),
 };

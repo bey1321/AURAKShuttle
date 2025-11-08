@@ -23,7 +23,6 @@ import {
   TableRow,
 } from "../../ui";
 import { Edit, Trash2, Plus } from "lucide-react";
-import { getTerminals } from "../../../data/database";
 import { Terminal } from "../../../data/types";
 import { adminAPI } from "../../../lib/api";
 import ConfirmDeleteDialog from "../../ConfirmDeleteDialog";
@@ -50,11 +49,17 @@ export default function ManageTerminal() {
     const fetchTerminals = async () => {
       try {
         setLoading(true);
-        const data = await getTerminals();
-        setTerminals(data);
-      } catch (error) {
+        const data = await adminAPI.getTerminals();
+        const mappedTerminals: Terminal[] = data.map((t: any) => ({
+          id: t.id,
+          terminalName: t.terminalName,
+          terminal: t.terminalName,
+          city: t.city,
+        }));
+        setTerminals(mappedTerminals);
+      } catch (error: any) {
         console.error("Error fetching terminals:", error);
-        alert("Failed to load terminals. Please try again.");
+        alert(error?.message || "Failed to load terminals. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -83,28 +88,36 @@ export default function ManageTerminal() {
     try {
       setSaving(true);
       if (editingTerminal) {
-        // Update terminal - Note: Backend doesn't have update endpoint, so we'll show an error
-        alert(
-          "Terminal update functionality is not available in the backend. Please delete and recreate the terminal."
-        );
+        // Update terminal
+        await adminAPI.updateTerminal({
+          id: editingTerminal.id,
+          terminalName: formData.terminalName,
+          city: formData.city,
+        });
       } else {
         // Create new terminal
         await adminAPI.createTerminal({
           terminalName: formData.terminalName,
           city: formData.city,
         });
-
-        // Refresh terminals list
-        const data = await getTerminals();
-        setTerminals(data);
       }
+
+      // Refresh terminals list
+      const data = await adminAPI.getTerminals();
+      const mappedTerminals: Terminal[] = data.map((t: any) => ({
+        id: t.id,
+        terminalName: t.terminalName,
+        terminal: t.terminalName,
+        city: t.city,
+      }));
+      setTerminals(mappedTerminals);
 
       setShowDialog(false);
       setFormData({ terminalName: "", city: "" });
       setEditingTerminal(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving terminal:", error);
-      alert("Failed to save terminal. Please try again.");
+      alert(error?.message || "Failed to save terminal. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -114,17 +127,12 @@ export default function ManageTerminal() {
     if (!terminalToDelete) return;
 
     try {
-      // Note: Backend doesn't have delete terminal endpoint
-      // For now, we'll just remove from local state
-      // In a real implementation, you would call: await adminAPI.deleteTerminal(terminalToDelete.id);
-      alert(
-        "Terminal deletion is not available in the backend API. This action would require backend implementation."
-      );
-      // setTerminals(terminals.filter((t) => t.id !== terminalToDelete.id));
+      await adminAPI.deleteTerminal(terminalToDelete.id);
+      setTerminals(terminals.filter((t) => t.id !== terminalToDelete.id));
       setTerminalToDelete(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting terminal:", error);
-      alert("Failed to delete terminal. Please try again.");
+      alert(error?.message || "Failed to delete terminal. Please try again.");
     }
   };
 

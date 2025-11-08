@@ -14,3 +14,6 @@ class Claim(Base):
 
     item = relationship('Found', back_populates='claim')
     item_id = Column(Integer, ForeignKey('found.id'))
+
+    status = Column(String, default="pending")  # pending, approved, received
+

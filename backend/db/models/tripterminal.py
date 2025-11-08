@@ -7,10 +7,10 @@ class TripTerminal(Base):
     __tablename__ = 'tripterminal'
 
     route_id = Column(Integer, ForeignKey('route.id'))
-    terminal_id = Column (String, ForeignKey('terminal.id'))
+    terminal_id = Column (Integer, ForeignKey('terminal.id'))
 
-    trip = relationship('Route', back_populates='terminal')
-    terminal = relationship('Terminal', back_populates='trip')
+    route = relationship('Route', back_populates='terminals')
+    terminal = relationship('Terminal', back_populates='tripterminals')
 
 
     __table_args__ = (
