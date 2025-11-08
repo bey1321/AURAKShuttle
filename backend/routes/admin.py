@@ -35,7 +35,7 @@ router = APIRouter(
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.get('/all_users', response_model= List[UserResponse])
+@router.get('/all_users') #, response_model= List[UserResponse]
 def get_users(db: db_dependency):
     try:
         users = db.query(User).filter(User.role != 'driver' or User.role !='admin').all()
@@ -46,7 +46,7 @@ def get_users(db: db_dependency):
 
 
 #driver related routes
-@router.get('/drivers', response_model=List[DriverResponse])
+@router.get('/drivers') #, response_model=List[DriverResponse]
 def get_driver(db: db_dependency 
 ):
     try:
