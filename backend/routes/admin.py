@@ -5,6 +5,7 @@ from db.models.trip import Trip
 from db.models.terminal import Terminal
 from db.models.route import Route
 from db.models.tripterminal import TripTerminal
+from db.models.registered import Registered
 
 from db.setup import get_db
 from middleware.role import get_user
@@ -35,7 +36,7 @@ router = APIRouter(
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.get('/all_users', response_model= List[UserResponse])
+@router.get('/all_users') #, response_model= List[UserResponse]
 def get_users(db: db_dependency):
     try:
         users = db.query(User).filter(User.role != 'driver' or User.role !='admin').all()
@@ -46,7 +47,7 @@ def get_users(db: db_dependency):
 
 
 #driver related routes
-@router.get('/drivers', response_model=List[DriverResponse])
+@router.get('/drivers') #, response_model=List[DriverResponse]
 def get_driver(db: db_dependency 
 ):
     try:
@@ -753,6 +754,31 @@ def get_all_routes(db: db_dependency):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f'Uable to get all routes. {str(e)}'
+        )
+    
+
+
+@router.post('/approve_registration/{registration_id}')
+def approve_registration(registration_id: int,db: db_dependency, user =Depends(get_user) ):
+    if not user or user['role'] != 'admin':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= 'Unauthorized access')
+    
+    reg = db.query(Registered).filter(Registered.id == registration_id).first()
+
+    if not reg:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail= 'Unable to find regisration request')
+    
+    try:
+        reg.status = 'approved'
+
+        db.commit()
+
+        return {'message': 'approved registered'}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Uable to approve registration. {str(e)}'
         )
     
 

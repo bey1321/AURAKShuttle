@@ -38,7 +38,7 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             select(Trip)
             .join(Route, Trip.route_id == Route.id)
             .join(Registered, Registered.route_id == Route.id)
-            .where(Registered.student_id == user['id'])
+            .where(Registered.student_id == user['id'], Registered.status == 'approved')
             .options(
                 selectinload(Trip.route), 
                 selectinload(Trip.bus)
@@ -399,4 +399,36 @@ def rate_trip(rating: RatingRequest, db: db_dependency, user=Depends(get_user)):
         )
 
 
+
+@router.post('/route/{route_id}')
+def register_route_request(route_id: int, db: db_dependency, user=Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail = "Unauthorized access. Please login")
+    
+
+    try:
+        student = db.query(User).filter(User.id== user['id']).first()
+
+        if not student  :
+            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail = "Unable to find user in the database")
+        
+        route = db.query(Route).filter(Route.id == route_id).first()
+
+        if not route:
+            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail = "Unable to find route in the database")
+
+        
+        new_reg = Registered(
+            route_id = route_id,
+            student_id = student.id
+        )
+
+        db.add(new_reg)
+        db.commit()
+
+        return {'message': 'registration requested'}
+
+
+    except Exception as e:
+        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail = f"Internal Server Error. {str(e)}")
 #routes related to gps tracking
