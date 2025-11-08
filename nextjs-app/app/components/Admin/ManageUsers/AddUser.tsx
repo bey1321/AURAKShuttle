@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { userSchema, UserFormData } from "./UserSchema";
 import {
@@ -36,6 +36,7 @@ export default function AddUser({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -57,10 +58,18 @@ export default function AddUser({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-4">
           <div className="space-y-2">
-            <Label>Name</Label>
-            <Input {...register("name")} />
-            {errors.name && (
-              <p className="text-red-500 text-sm">{errors.name.message}</p>
+            <Label>First Name</Label>
+            <Input {...register("firstName")} />
+            {errors.firstName && (
+              <p className="text-red-500 text-sm">{errors.firstName.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Last Name</Label>
+            <Input {...register("lastName")} />
+            {errors.lastName && (
+              <p className="text-red-500 text-sm">{errors.lastName.message}</p>
             )}
           </div>
 
@@ -73,30 +82,22 @@ export default function AddUser({
           </div>
 
           <div className="space-y-2">
-            <Label>UserSchoolID</Label>
-            <Input {...register("UserSchoolID")} />
-            {errors.UserSchoolID && (
-              <p className="text-red-500 text-sm">
-                {errors.UserSchoolID.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
             <Label>Role</Label>
-            <Select
-              onValueChange={(value) =>
-                (register("role").onChange as any)({ target: { value } })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student">Student</SelectItem>
-                <SelectItem value="staff">Staff</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              name="role"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.role && (
               <p className="text-red-500 text-sm">{errors.role.message}</p>
             )}

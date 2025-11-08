@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Trip } from "../../../data/types";
+import { Trip, Terminal } from "../../../data/types";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,8 @@ import {
   SelectValue,
   Button,
 } from "../../ui";
+import MultiSelect from "../../MultiSelect";
+import { getTerminals } from "../../../data/database";
 
 interface TripFormDialogProps {
   open: boolean;
@@ -33,6 +35,8 @@ export function EditTrip({
   onSave,
   editingTrip,
 }: TripFormDialogProps) {
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [loadingTerminals, setLoadingTerminals] = useState(true);
   const [tripData, setTripData] = useState<
     Omit<Trip, "id" | "passengers" | "status" | "ETA">
   >({
@@ -41,11 +45,29 @@ export function EditTrip({
     driver: "",
     bus: "",
     startTerminal: "",
+    middleTerminals: [],
     stopTerminal: "",
     startTime: "",
     endTime: "",
     type: "regular",
   });
+
+  // Fetch terminals on mount
+  useEffect(() => {
+    const fetchTerminals = async () => {
+      try {
+        setLoadingTerminals(true);
+        const data = await getTerminals();
+        setTerminals(data);
+      } catch (error) {
+        console.error("Error fetching terminals:", error);
+        alert("Failed to load terminals. Please try again.");
+      } finally {
+        setLoadingTerminals(false);
+      }
+    };
+    fetchTerminals();
+  }, []);
 
   useEffect(() => {
     if (editingTrip) {
@@ -66,6 +88,7 @@ export function EditTrip({
         driver,
         bus,
         startTerminal,
+        middleTerminals: editingTrip.middleTerminals ?? [],
         stopTerminal,
         startTime,
         endTime,
@@ -78,6 +101,7 @@ export function EditTrip({
         driver: "",
         bus: "",
         startTerminal: "",
+        middleTerminals: [],
         stopTerminal: "",
         startTime: "",
         endTime: "",
@@ -128,6 +152,7 @@ export function EditTrip({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Date */}
           <div className="space-y-2">
             <Label>Date</Label>
             <Input
@@ -139,6 +164,7 @@ export function EditTrip({
             />
           </div>
 
+          {/* Schedule */}
           <div className="space-y-2">
             <Label>Schedule</Label>
             <Input
@@ -150,6 +176,7 @@ export function EditTrip({
             />
           </div>
 
+          {/* Driver */}
           <div className="space-y-2">
             <Label>Driver</Label>
             <Input
@@ -160,6 +187,7 @@ export function EditTrip({
             />
           </div>
 
+          {/* Bus */}
           <div className="space-y-2">
             <Label>Bus</Label>
             <Input
@@ -170,27 +198,51 @@ export function EditTrip({
             />
           </div>
 
-          <div className="flex gap-2">
-            <div className="flex-1 space-y-2">
-              <Label>Start Terminal</Label>
-              <Input
-                value={tripData.startTerminal}
-                onChange={(e) =>
-                  setTripData({ ...tripData, startTerminal: e.target.value })
-                }
-              />
-            </div>
-            <div className="flex-1 space-y-2">
-              <Label>Stop Terminal</Label>
-              <Input
-                value={tripData.stopTerminal}
-                onChange={(e) =>
-                  setTripData({ ...tripData, stopTerminal: e.target.value })
-                }
-              />
-            </div>
+          {/* Start Terminal */}
+          <div className="space-y-2">
+            <Label>Start Terminal</Label>
+            <Input
+              value={tripData.startTerminal}
+              onChange={(e) =>
+                setTripData({ ...tripData, startTerminal: e.target.value })
+              }
+            />
           </div>
 
+          {/* Middle Terminals */}
+          <div className="space-y-2">
+            <Label>Middle Terminals</Label>
+            {loadingTerminals ? (
+              <p className="text-sm text-muted-foreground">
+                Loading terminals...
+              </p>
+            ) : (
+              <MultiSelect
+                terminals={terminals.map((t) => ({
+                  terminal: t.terminalName || t.terminal || "",
+                  city: t.city || "",
+                }))}
+                field={{
+                  value: tripData.middleTerminals,
+                  onChange: (val: string[]) =>
+                    setTripData({ ...tripData, middleTerminals: val }),
+                }}
+              />
+            )}
+          </div>
+
+          {/* Stop Terminal */}
+          <div className="space-y-2">
+            <Label>Stop Terminal</Label>
+            <Input
+              value={tripData.stopTerminal}
+              onChange={(e) =>
+                setTripData({ ...tripData, stopTerminal: e.target.value })
+              }
+            />
+          </div>
+
+          {/* Start & End Times */}
           <div className="flex gap-2">
             <div className="flex-1 space-y-2">
               <Label>Start Time</Label>
@@ -214,6 +266,7 @@ export function EditTrip({
             </div>
           </div>
 
+          {/* Trip Type */}
           <div className="space-y-2">
             <Label>Trip Type</Label>
             <Select
@@ -236,6 +289,7 @@ export function EditTrip({
             </Select>
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-2">
             <Button className="flex-1" onClick={handleSave}>
               {editingTrip ? "Save Changes" : "Create Trip"}

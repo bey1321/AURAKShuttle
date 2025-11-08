@@ -1,36 +1,64 @@
-import { Feedback } from './types';
+import { Feedback, RecentTrip } from "./types";
+import { tripAPI } from "../lib/api";
 
-export const recentTrips = [
-  { id: 1, route: "Main Campus → Khatt Terminal", date: "Oct 21, 2025 - 08:00 AM", driver: "Ahmed Hassan" },
-  { id: 2, route: "Khatt Terminal → Main Campus", date: "Oct 20, 2025 - 10:00 AM", driver: "Mohammed Ali" },
-  { id: 3, route: "Main Campus → RAK Mall", date: "Oct 19, 2025 - 02:00 PM", driver: "Sara Ahmed" },
-  { id: 4, route: "RAK Mall → Main Campus", date: "Oct 18, 2025 - 04:30 PM", driver: "Ahmed Hassan" },
-];
+// Fetch my reviews/feedback from backend
+export async function getMyFeedback(): Promise<Feedback[]> {
+  try {
+    const data = await tripAPI.getMyReviews();
+    // The API returns { reviews: [...] } or { message: "..." }
+    if (data.reviews && Array.isArray(data.reviews)) {
+      return data.reviews.map((review: any) => ({
+        id: review.id,
+        trip_id: review.trip_id,
+        route: review.trip?.route_name || "Unknown Route",
+        date: review.trip?.date || "",
+        comment: review.comment || "",
+        cleanliness: review.cleanliness,
+        driver_rating: review.driver_rating,
+        timeliness: review.timeliness,
+        user_id: review.user_id,
+        // For backward compatibility
+        categories: {
+          cleanliness: review.cleanliness || 0,
+          driver: review.driver_rating || 0,
+          timeliness: review.timeliness || 0,
+        },
+        rating: Math.round(
+          ((review.cleanliness || 0) +
+            (review.driver_rating || 0) +
+            (review.timeliness || 0)) /
+            3
+        ),
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching my feedback:", error);
+    throw error;
+  }
+}
 
-export const myFeedback: Feedback[] = [
-  {
-    id: 1,
-    route: "Main Campus → Khatt Terminal",
-    date: "Oct 15, 2025",
-    rating: 5,
-    comment: "Excellent service! Driver was very professional and the shuttle was clean.",
-    categories: { cleanliness: 5, driver: 5, timeliness: 5 },
-  },
-  {
-    id: 2,
-    route: "RAK Mall → Main Campus",
-    date: "Oct 10, 2025",
-    rating: 4,
-    comment: "Good experience overall. Slight delay but comfortable ride.",
-    categories: { cleanliness: 4, driver: 5, timeliness: 3 },
-  },
-  {
-    id: 3,
-    route: "Main Campus → RAK Mall",
-    date: "Oct 5, 2025",
-    rating: 5,
-    comment: "Perfect timing and very clean shuttle. Great driver!",
-    categories: { cleanliness: 5, driver: 5, timeliness: 5 },
-  },
-];
+// Fetch recent trips for feedback
+export async function getRecentTrips(): Promise<RecentTrip[]> {
+  try {
+    const data = await tripAPI.getTripsForFeedback();
+    return data.map((trip: any) => ({
+      id: trip.id,
+      route: trip.route_name || "Unknown Route",
+      date: trip.date
+        ? typeof trip.date === "string"
+          ? trip.date
+          : trip.date.split("T")[0]
+        : "",
+      driver: trip.driver_id?.toString() || "Unknown",
+      time: trip.route?.start_time || "",
+    }));
+  } catch (error) {
+    console.error("Error fetching recent trips:", error);
+    throw error;
+  }
+}
 
+// Legacy exports for backward compatibility
+export const myFeedback: Feedback[] = [];
+export const recentTrips: RecentTrip[] = [];

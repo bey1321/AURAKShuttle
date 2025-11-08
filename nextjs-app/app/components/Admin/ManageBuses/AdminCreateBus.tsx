@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -17,27 +17,131 @@ import {
   TableCell,
   Badge,
   Dialog,
-  DialogTrigger,
 } from "../../ui";
-import { buses as initialBuses } from "../../../data/database";
 import { Bus } from "../../../data/types";
 import CreateBusForm from "./CreateBusForm";
 import EditBus from "./EditBus";
+import ConfirmDeleteDialog from "../../ConfirmDeleteDialog";
+import { BusFormData } from "./BusSchema";
 
 export default function AdminCreateBus() {
-  const [buses, setBuses] = useState<Bus[]>(initialBuses);
+  const [buses, setBuses] = useState<Bus[]>([]);
   const [showCreateBus, setShowCreateBus] = useState(false);
   const [editBus, setEditBus] = useState<Bus | null>(null);
+  const [busToDelete, setBusToDelete] = useState<Bus | null>(null);
 
-  const handleAddBus = (data: Omit<Bus, "busID">) => {
-    const newBus = { ...data, busID: buses.length + 1 };
-    setBuses([...buses, newBus]);
-    setShowCreateBus(false);
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  // Fetch buses from backend on mount
+  useEffect(() => {
+    const fetchBuses = async () => {
+      try {
+        const res = await fetch(`${base}/admin/bus`);
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.detail || "Failed to fetch buses");
+          return;
+        }
+
+        const mappedBuses: Bus[] = data.map((b: any) => ({
+          busID: b.id,
+          plate_num: b.plate_num,
+          model: b.model,
+          manufacturer: b.manufacturer,
+          no_seats: b.no_seats,
+          status: b.status,
+        }));
+
+        setBuses(mappedBuses);
+      } catch (err) {
+        console.error(err);
+        alert("Server error while fetching buses");
+      }
+    };
+
+    fetchBuses();
+  }, [base]);
+
+  // Add bus
+  const handleAddBus = async (data: BusFormData) => {
+    try {
+      // send only the fields your backend expects
+      const payload = {
+        plate_num: data.plate_num,
+        model: data.model,
+        manufacturer: data.manufacturer,
+        no_seats: data.no_seats,
+        status: data.status,
+      };
+
+      const res = await fetch(`${base}/admin/create/bus`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.detail || "Failed to create bus");
+      }
+
+      // Add the new bus to the frontend state
+      const newBus: Bus = {
+        busID: json.bus_id, // id returned from backend
+        ...payload,
+      };
+
+      setBuses((prev) => [newBus, ...prev]);
+      setShowCreateBus(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(
+        err?.message || JSON.stringify(err) || "Server error while adding bus"
+      );
+    }
   };
 
-  const handleSaveEdit = (data: Bus) => {
-    setBuses(buses.map((b) => (b.busID === data.busID ? data : b)));
-    setEditBus(null);
+
+  // Update bus in state by busID
+  const handleSaveEdit = async (busID: number, data: Partial<Bus>) => {
+    try {
+      const res = await fetch(`${base}/admin/update/bus/${busID}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.detail || json.message || "Failed to update bus");
+      }
+
+      setBuses((prev) =>
+        prev.map((b) => (b.busID === busID ? { ...b, ...data } : b))
+      );
+      setEditBus(null);
+    } catch (err) {
+      console.error(err);
+      alert((err as any).message || "Server error while updating bus");
+    }
+  };
+
+  const handleDeleteBus = async (busID: number) => {
+    try {
+      const res = await fetch(`${base}/admin/delete/bus/${busID}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.detail || json.message || "Failed to delete bus");
+      }
+      setBuses((prev) => prev.filter((b) => b.busID !== busID));
+      setBusToDelete(null);
+    } catch (err) {
+      console.error(err);
+      alert((err as any).message || "Server error while deleting bus");
+    }
   };
 
   return (
@@ -49,19 +153,18 @@ export default function AdminCreateBus() {
             Create and manage buses in the shuttle system
           </p>
         </div>
-        <Dialog open={showCreateBus} onOpenChange={setShowCreateBus}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Bus
-            </Button>
-          </DialogTrigger>
-          <CreateBusForm
-            onSubmit={handleAddBus}
-            onCancel={() => setShowCreateBus(false)}
-          />
-        </Dialog>
+
+        <Button onClick={() => setShowCreateBus(true)}>
+          <Plus className="w-4 h-4 mr-2" /> Add New Bus
+        </Button>
       </div>
+
+      <Dialog open={showCreateBus} onOpenChange={setShowCreateBus}>
+        <CreateBusForm
+          onSubmit={handleAddBus} // correct prop name
+          onCancel={() => setShowCreateBus(false)}
+        />
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -76,14 +179,14 @@ export default function AdminCreateBus() {
                 <TableHead>Model</TableHead>
                 <TableHead>Manufacturer</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Assignment</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {buses.map((bus) => (
                 <TableRow key={bus.busID}>
-                  <TableCell>{bus.plateNumber}</TableCell>
+                  <TableCell>{bus.plate_num}</TableCell>
                   <TableCell>{bus.model}</TableCell>
                   <TableCell>{bus.manufacturer}</TableCell>
                   <TableCell>
@@ -93,22 +196,20 @@ export default function AdminCreateBus() {
                       {bus.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        bus.assignment === "Assigned" ? "default" : "outline"
-                      }
-                    >
-                      {bus.assignment}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                  <TableCell className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setEditBus(bus)}
                     >
                       <Edit className="w-4 h-4 mr-1" /> Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setBusToDelete(bus)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" /> Delete
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -123,7 +224,18 @@ export default function AdminCreateBus() {
           bus={editBus}
           open={!!editBus}
           onOpenChange={(open) => !open && setEditBus(null)}
-          onSave={handleSaveEdit}
+          onSave={handleSaveEdit} // handleSaveEdit(busID, data)
+        />
+      )}
+
+      {busToDelete && (
+        <ConfirmDeleteDialog
+          open={!!busToDelete}
+          title="Delete Bus"
+          message={`Are you sure you want to delete bus "${busToDelete.plate_num}"?`}
+          confirmLabel="Delete Bus"
+          onConfirm={() => handleDeleteBus(busToDelete.busID)}
+          onCancel={() => setBusToDelete(null)}
         />
       )}
     </div>

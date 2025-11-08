@@ -1,15 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Eye, Hand } from "lucide-react";
 import {
-  Button,
-  Badge,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  Badge,
+  Button,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "../../ui";
 import { LostFoundItem } from "./ItemSchema";
 
@@ -17,11 +22,22 @@ interface FoundItemProps {
   item: LostFoundItem;
   onView: (item: LostFoundItem) => void;
   onClaim: (item: LostFoundItem) => void;
+  availableLocations: string[];
 }
 
-export default function FoundItem({ item, onView, onClaim }: FoundItemProps) {
+export default function FoundItem({
+  item,
+  onView,
+  onClaim,
+  availableLocations,
+}: FoundItemProps) {
+  const [selectedLocation, setSelectedLocation] = useState(item.location);
+
   return (
-    <Card key={item.id} className="hover:shadow-md transition-shadow">
+    <Card
+      key={item.id}
+      className="hover:shadow-md transition-shadow border-blue-200 bg-blue-50"
+    >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{item.item}</CardTitle>
@@ -40,7 +56,18 @@ export default function FoundItem({ item, onView, onClaim }: FoundItemProps) {
       <CardContent className="space-y-2 text-sm">
         <p>
           <span className="text-muted-foreground">Location:</span>{" "}
-          {item.location}
+          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select location" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableLocations.map((loc) => (
+                <SelectItem key={loc} value={loc}>
+                  {loc}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </p>
         <p>
           <span className="text-muted-foreground">Reported by:</span>{" "}
@@ -55,9 +82,12 @@ export default function FoundItem({ item, onView, onClaim }: FoundItemProps) {
           >
             <Eye className="w-4 h-4 mr-1" /> View
           </Button>
-
-          <Button size="sm" variant="outline" onClick={() => onClaim(item)}>
-            <Hand />Claim
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onClaim({ ...item, location: selectedLocation })}
+          >
+            <Hand className="w-4 h-4 mr-1" /> Claim
           </Button>
         </div>
       </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -17,20 +17,52 @@ import {
   SelectItem,
 } from "../../ui";
 import { Star } from "lucide-react";
-import { recentTrips } from "../../../data/database";
-import { Feedback } from "../../../data/database";
+import { getTripsForFeedback } from "../../../data/database";
+import { Feedback, RecentTrip } from "../../../data/database";
+import { tripAPI } from "../../../lib/api";
 
 interface Props {
   onSubmit: (feedback: Feedback) => void;
 }
 
 export default function NewFeedbackForm({ onSubmit }: Props) {
+  const [recentTrips, setRecentTrips] = useState<RecentTrip[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTrip, setSelectedTrip] = useState("");
   const [overallRating, setOverallRating] = useState(0);
   const [cleanlinessRating, setCleanlinessRating] = useState(0);
   const [driverRating, setDriverRating] = useState(0);
   const [timelinessRating, setTimelinessRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchTrips = async () => {
+      try {
+        setLoading(true);
+        const trips = await getTripsForFeedback();
+        setRecentTrips(
+          trips.map((trip: any) => ({
+            id: trip.id,
+            route: trip.route_name || "Unknown Route",
+            date: trip.date
+              ? typeof trip.date === "string"
+                ? trip.date
+                : trip.date.split("T")[0]
+              : "",
+            driver: trip.driver_id?.toString() || "Unknown",
+            time: trip.route?.start_time || "",
+          }))
+        );
+      } catch (error) {
+        console.error("Error fetching trips for feedback:", error);
+        alert("Failed to load trips. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrips();
+  }, []);
 
   const StarRating = ({
     rating,
@@ -59,33 +91,62 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
     </div>
   );
 
-  const handleSubmit = () => {
-    if (!selectedTrip || !feedbackText || overallRating === 0) return;
+  const handleSubmit = async () => {
+    if (
+      !selectedTrip ||
+      !feedbackText ||
+      cleanlinessRating === 0 ||
+      driverRating === 0 ||
+      timelinessRating === 0
+    )
+      return;
 
     const trip = recentTrips.find((t) => t.id.toString() === selectedTrip);
     if (!trip) return;
 
-    const newFeedback: Feedback = {
-      id: Date.now(),
-      route: trip.route,
-      date: trip.date,
-      rating: overallRating,
-      comment: feedbackText,
-      categories: {
+    try {
+      setSubmitting(true);
+      await tripAPI.rateTrip({
+        trip_id: parseInt(selectedTrip),
         cleanliness: cleanlinessRating,
-        driver: driverRating,
+        driver_rating: driverRating,
         timeliness: timelinessRating,
-      },
-    };
+        comment: feedbackText,
+      });
 
-    onSubmit(newFeedback);
+      const newFeedback: Feedback = {
+        id: Date.now(),
+        trip_id: parseInt(selectedTrip),
+        route: trip.route,
+        date: trip.date,
+        rating: Math.round(
+          (cleanlinessRating + driverRating + timelinessRating) / 3
+        ),
+        comment: feedbackText,
+        cleanliness: cleanlinessRating,
+        driver_rating: driverRating,
+        timeliness: timelinessRating,
+        categories: {
+          cleanliness: cleanlinessRating,
+          driver: driverRating,
+          timeliness: timelinessRating,
+        },
+      };
 
-    setSelectedTrip("");
-    setOverallRating(0);
-    setCleanlinessRating(0);
-    setDriverRating(0);
-    setTimelinessRating(0);
-    setFeedbackText("");
+      onSubmit(newFeedback);
+
+      setSelectedTrip("");
+      setOverallRating(0);
+      setCleanlinessRating(0);
+      setDriverRating(0);
+      setTimelinessRating(0);
+      setFeedbackText("");
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      alert("Failed to submit feedback. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -102,11 +163,21 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
               <SelectValue placeholder="Choose the trip you want to review" />
             </SelectTrigger>
             <SelectContent>
-              {recentTrips.map((trip) => (
-                <SelectItem key={trip.id} value={trip.id.toString()}>
-                  {trip.route} • {trip.date} • Driver: {trip.driver}
+              {loading ? (
+                <SelectItem value="loading" disabled>
+                  Loading trips...
                 </SelectItem>
-              ))}
+              ) : recentTrips.length === 0 ? (
+                <SelectItem value="none" disabled>
+                  No trips available for feedback
+                </SelectItem>
+              ) : (
+                recentTrips.map((trip) => (
+                  <SelectItem key={trip.id} value={trip.id.toString()}>
+                    {trip.route} • {trip.date} • Driver: {trip.driver}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -140,8 +211,12 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
           />
         </div>
 
-        <Button className="w-full" onClick={handleSubmit}>
-          Submit Feedback
+        <Button
+          className="w-full"
+          onClick={handleSubmit}
+          disabled={submitting || loading}
+        >
+          {submitting ? "Submitting..." : "Submit Feedback"}
         </Button>
       </CardContent>
     </Card>

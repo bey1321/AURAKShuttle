@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -15,102 +15,75 @@ import {
   CardTitle,
   CardDescription,
   Input,
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
 } from "../../ui";
-import { drivers as initialDrivers } from "../../../data/database";
 import { DriverInput } from "./DriverSchema";
-
 import { AddDriver } from "./AddDriver";
 import { EditDriver } from "./EditDriver";
+import ConfirmDeleteDialog from "../../ConfirmDeleteDialog";
 
 interface Driver extends DriverInput {
   id: number;
 }
 
 export function AdminManageDrivers() {
-  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
-
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [minTrips, setMinTrips] = useState("");
-  const [minRating, setMinRating] = useState("");
-
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [showEditDriver, setShowEditDriver] = useState(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
 
-  const handleAddDriver = (driver: DriverInput) => {
-    setDrivers([...drivers, { id: Date.now(), ...driver }]);
+  // ✅ Fetch drivers
+  const fetchDrivers = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/admin/drivers");
+      const data = await res.json();
+      setDrivers(data);
+    } catch (err) {
+      console.error("Error fetching drivers:", err);
+    }
   };
 
-  const handleEditDriver = (updatedDriver: Driver) => {
-    setDrivers(
-      drivers.map((d) => (d.id === updatedDriver.id ? updatedDriver : d))
-    );
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
+
+  const handleDeleteDriver = async (id: number) => {
+    try {
+      const res = await fetch(
+        `http://localhost:8000/admin/delete/driver/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (res.ok) fetchDrivers();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setDriverToDelete(null);
+    }
   };
 
-  const handleDeleteDriver = (id: number) => {
-    setDrivers(drivers.filter((d) => d.id !== id));
-  };
-
-  const filteredDrivers = drivers.filter((driver) => {
-    const matchSearch = driver.name
+  const filteredDrivers = drivers.filter((d) =>
+    `${d.first_name} ${d.last_name}`
       .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchStatus =
-      filterStatus === "all" || driver.status === filterStatus;
-    const matchTrips = !minTrips || driver.trips >= parseInt(minTrips);
-    const matchRating = !minRating || driver.rating >= parseFloat(minRating);
-    return matchSearch && matchStatus && matchTrips && matchRating;
-  });
+      .includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-xl font-semibold">Manage Drivers</h1>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center justify-between">
         <Input
-          placeholder="Search name..."
+          placeholder="Search by name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-48"
         />
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="Active">Active</SelectItem>
-            <SelectItem value="Inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Min Trips"
-          type="number"
-          value={minTrips}
-          onChange={(e) => setMinTrips(e.target.value)}
-          className="w-32"
-        />
-        <Input
-          placeholder="Min Rating"
-          type="number"
-          step="0.1"
-          min={0}
-          max={5}
-          value={minRating}
-          onChange={(e) => setMinRating(e.target.value)}
-          className="w-32"
-        />
         <Button onClick={() => setShowAddDriver(true)}>+ Add Driver</Button>
       </div>
 
-      {/* Drivers Table */}
       <Card>
         <CardHeader>
           <CardTitle>Drivers List</CardTitle>
@@ -120,11 +93,9 @@ export function AdminManageDrivers() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>First Name</TableHead>
+                <TableHead>Last Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Trips</TableHead>
-                <TableHead>Rating</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -132,11 +103,9 @@ export function AdminManageDrivers() {
             <TableBody>
               {filteredDrivers.map((driver) => (
                 <TableRow key={driver.id}>
-                  <TableCell>{driver.name}</TableCell>
+                  <TableCell>{driver.first_name}</TableCell>
+                  <TableCell>{driver.last_name}</TableCell>
                   <TableCell>{driver.email}</TableCell>
-                  <TableCell>{driver.status}</TableCell>
-                  <TableCell>{driver.trips}</TableCell>
-                  <TableCell>⭐ {driver.rating.toFixed(1)}</TableCell>
                   <TableCell className="flex gap-2">
                     <Button
                       size="sm"
@@ -151,19 +120,18 @@ export function AdminManageDrivers() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDeleteDriver(driver.id)}
+                      onClick={() => setDriverToDelete(driver)}
                     >
                       Delete
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
-
               {filteredDrivers.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
-                    className="text-center py-6 text-muted-foreground"
+                    colSpan={4}
+                    className="text-center text-gray-500 py-6"
                   >
                     No drivers found.
                   </TableCell>
@@ -174,18 +142,29 @@ export function AdminManageDrivers() {
         </CardContent>
       </Card>
 
-      {/* Dialogs */}
+      {/* Modals */}
       <AddDriver
         open={showAddDriver}
         onOpenChange={setShowAddDriver}
-        onAdd={handleAddDriver}
+        onAdded={fetchDrivers}
       />
       <EditDriver
         open={showEditDriver}
         onOpenChange={setShowEditDriver}
         driver={editDriver}
-        onEdit={handleEditDriver}
+        onUpdated={fetchDrivers}
       />
+
+      {driverToDelete && (
+        <ConfirmDeleteDialog
+          open={!!driverToDelete}
+          title="Delete Driver"
+          message={`Are you sure you want to delete ${driverToDelete.first_name} ${driverToDelete.last_name}?`}
+          confirmLabel="Delete Driver"
+          onConfirm={() => handleDeleteDriver(driverToDelete.id)}
+          onCancel={() => setDriverToDelete(null)}
+        />
+      )}
     </div>
   );
 }

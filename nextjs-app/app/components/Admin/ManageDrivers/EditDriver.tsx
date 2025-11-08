@@ -9,30 +9,26 @@ import {
   DialogDescription,
   Label,
   Input,
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
   Button,
 } from "../../ui";
-import { driverSchema, DriverInput } from "./DriverSchema";
-import { z } from "zod";
+import { DriverInput } from "./DriverSchema";
 
 interface EditDriverDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   driver: (DriverInput & { id: number }) | null;
-  onEdit: (driver: DriverInput & { id: number }) => void;
+  onUpdated: () => void; // refetch after save
 }
 
 export function EditDriver({
   open,
   onOpenChange,
   driver,
-  onEdit,
+  onUpdated,
 }: EditDriverDialogProps) {
   const [formData, setFormData] = useState(driver);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setFormData(driver || undefined);
@@ -40,15 +36,32 @@ export function EditDriver({
 
   if (!formData) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setError("");
+    setLoading(true);
     try {
-      const validated = driverSchema.parse(formData);
-      onEdit(validated);
+      const res = await fetch(
+        `http://localhost:8000/admin/update/driver/${formData.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.detail || "Failed to update driver");
+        return;
+      }
+
+      onUpdated();
       onOpenChange(false);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        alert(err.errors.map((e) => e.message).join("\n"));
-      }
+      console.error(err);
+      setError("Server error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,21 +70,31 @@ export function EditDriver({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Driver</DialogTitle>
-          <DialogDescription>Edit driver information below.</DialogDescription>
+          <DialogDescription>
+            Modify driver information below.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Name</Label>
+        <div className="space-y-3 py-4">
+          <div>
+            <Label>First Name</Label>
             <Input
-              value={formData.name}
+              value={formData.first_name}
               onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
+                setFormData({ ...formData, first_name: e.target.value })
               }
             />
           </div>
-
-          <div className="space-y-2">
+          <div>
+            <Label>Last Name</Label>
+            <Input
+              value={formData.last_name}
+              onChange={(e) =>
+                setFormData({ ...formData, last_name: e.target.value })
+              }
+            />
+          </div>
+          <div>
             <Label>Email</Label>
             <Input
               value={formData.email}
@@ -80,62 +103,22 @@ export function EditDriver({
               }
             />
           </div>
-
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  status: value as DriverInput["status"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Trips</Label>
+          <div>
+            <Label>New Password (optional)</Label>
             <Input
-              type="number"
-              value={formData.trips}
+              type="password"
+              value={formData.password || ""}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  trips: parseInt(e.target.value) || 0,
-                })
+                setFormData({ ...formData, password: e.target.value })
               }
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Rating</Label>
-            <Input
-              type="number"
-              step="0.1"
-              min={0}
-              max={5}
-              value={formData.rating}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  rating: parseFloat(e.target.value) || 0,
-                })
-              }
-            />
-          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={handleSave}>
-              Save
+            <Button className="flex-1" onClick={handleSave} disabled={loading}>
+              {loading ? "Saving..." : "Save"}
             </Button>
             <Button
               variant="outline"

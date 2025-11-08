@@ -17,7 +17,7 @@ export default function AdminPage() {
     switch (currentPage) {
       case "admin-dashboard":
         return <AdminDashboard />;
-      case "create-bus":
+      case "manage-buses":
         return <AdminCreateBus />;
       case "manage-trips":
         return <AdminManageTrips />;

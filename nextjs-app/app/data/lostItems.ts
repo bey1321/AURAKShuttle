@@ -1,30 +1,70 @@
-import { LostFoundItem } from "./types";
+import { LostFoundItem, BackendLostItem } from "./types";
+import { lostFoundAPI } from "../lib/api";
 
-export const lostItems: LostFoundItem[] = [
-  {
-    id: 7,
-    item: "Wireless Earphones",
-    description: "Black wireless earphones, left ear missing",
-    date: "Oct 21, 2025",
-    location: "Main Campus Library",
-    status: "",
-    category: "Electronics",
-    type: "Lost",
-    reportedBy: "Student User",
-    contactInfo: "student@aurak.ac.ae",
-    createdAt: "2025-10-21T08:15:00Z",
-  },
-  {
-    id: 8,
-    item: "Red Wallet",
-    description: "Leather wallet with student ID inside",
-    date: "Oct 20, 2025",
-    location: "Cafeteria",
-    status: "",
-    category: "Personal",
-    type: "Lost",
-    reportedBy: "Student User",
-    contactInfo: "student@aurak.ac.ae",
-    createdAt: "2025-10-20T12:30:00Z",
-  },
-];
+// Convert backend lost item to frontend format
+function mapLostItemToFrontend(
+  item: BackendLostItem,
+  tripInfo?: any
+): LostFoundItem {
+  // Format date
+  const dateStr = item.date
+    ? typeof item.date === "string"
+      ? item.date.split("T")[0]
+      : item.date
+    : "";
+
+  // Format location from trip info if available
+  const location = tripInfo?.route_name || `Trip ${item.trip_id}`;
+
+  // Map status
+  let status: LostFoundItem["status"] = "Unclaimed";
+  if (item.status === "claimed" || item.status === "Claimed") {
+    status = "Claimed";
+  }
+
+  return {
+    id: item.id,
+    item: item.obj_name,
+    description: item.obj_description || "",
+    date: dateStr,
+    location: location,
+    status: status,
+    category: item.obj_type || "Other",
+    type: "Lost" as const,
+    reportedBy: "User", // Will need to get from user relationship
+    createdAt: dateStr,
+    tripId: item.trip_id,
+  };
+}
+
+// Fetch lost items from backend
+export async function getLostItems(): Promise<LostFoundItem[]> {
+  try {
+    const data = await lostFoundAPI.getLostItems();
+    // The API returns { "lost items": [...] }
+    const items = data["lost items"] || [];
+    return items.map((item: BackendLostItem) => mapLostItemToFrontend(item));
+  } catch (error) {
+    console.error("Error fetching lost items:", error);
+    throw error;
+  }
+}
+
+// Report a lost item
+export async function reportLostItem(data: {
+  objName: string;
+  objDescription: string;
+  objType: string;
+  tripId: number;
+}): Promise<LostFoundItem> {
+  try {
+    const response = await lostFoundAPI.reportLostItem(data);
+    return mapLostItemToFrontend(response.lost_item);
+  } catch (error) {
+    console.error("Error reporting lost item:", error);
+    throw error;
+  }
+}
+
+// Legacy export for backward compatibility
+export const lostItems: LostFoundItem[] = [];

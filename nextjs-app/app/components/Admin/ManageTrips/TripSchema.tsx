@@ -8,6 +8,9 @@ export const tripSchema = z.object({
   bus: z.string().nonempty("Bus is required"),
   startTerminal: z.string().nonempty("Start terminal is required"),
   stopTerminal: z.string().nonempty("Stop terminal is required"),
+  middleTerminals: z
+    .array(z.string().nonempty("Terminal name cannot be empty"))
+    .min(0, "Middle terminals can be empty"),
   startTime: z.string().nonempty("Start time is required"),
   endTime: z.string().nonempty("End time is required"),
   type: z.enum(["regular", "academic", "sport", "Student Life Event"]),

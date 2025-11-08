@@ -3,12 +3,12 @@
 import React from "react";
 import { Eye } from "lucide-react";
 import {
-  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  Button,
 } from "../../ui";
 import { LostFoundItem } from "./ItemSchema";
 
@@ -19,7 +19,10 @@ interface LostItemProps {
 
 export default function LostItem({ item, onView }: LostItemProps) {
   return (
-    <Card key={item.id} className="hover:shadow-md transition-shadow">
+    <Card
+      key={item.id}
+      className="hover:shadow-md transition-shadow border-red-200 bg-red-50"
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-lg">{item.item}</CardTitle>
         <CardDescription>{item.description}</CardDescription>

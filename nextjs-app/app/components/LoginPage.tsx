@@ -1,89 +1,90 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Button } from "./ui";
+import { authAPI } from "../lib/api";
+
+interface LoginPageProps {
+  onLogin: (username: string, role: "student" | "driver" | "admin") => void;
+  onSwitchToSignup: () => void;
+}
 
 export default function LoginPage({
   onLogin,
-}: {
-  onLogin: (username: string, role: string) => void;
-}) {
-  const router = useRouter();
+  onSwitchToSignup,
+}: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Mock login check
-    if (email === "student1@test.com" && password === "1234") {
-      onLogin("Student One", "student");
-      router.push("/");
-    } else if (email === "admin@test.com" && password === "1234") {
-      onLogin("Admin User", "admin");
-      router.push("/");
-    } else if (email === "driver@test.com" && password === "1234") {
-      onLogin("Driver User", "driver");
-      router.push("/");
-    } else {
-      setMessage("Invalid credentials");
+    try {
+      const res = await authAPI.login(email, password);
+      const role = res.role as "student" | "driver" | "admin";
+      onLogin(email, role);
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
+      <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-          Welcome Back
+          Login to Shuttle System
         </h2>
 
-        <form className="space-y-4" onSubmit={handleLogin}>
-          {message && (
-            <p className="text-red-500 text-sm text-center">{message}</p>
-          )}
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-gray-700 mb-1" htmlFor="email">
-              Email
-            </label>
+            <label className="block text-gray-700 mb-1">Email</label>
             <input
-              id="email"
               type="email"
-              placeholder="you@example.com"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
               required
             />
           </div>
 
           <div>
-            <label className="block text-gray-700 mb-1" htmlFor="password">
-              Password
-            </label>
+            <label className="block text-gray-700 mb-1">Password</label>
             <input
-              id="password"
               type="password"
-              placeholder="••••••••"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
               required
             />
           </div>
 
-          <button
+          <Button
             type="submit"
-            className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-dark transition"
+            variant="destructive"
+            className="w-full py-2 transition disabled:opacity-50"
+            disabled={loading}
           >
-            Login
-          </button>
+            {loading ? "Logging in..." : "Login"}
+          </Button>
         </form>
 
-        <p className="mt-6 text-center text-gray-500 text-sm">
-          Demo credentials: <br />
-          <span className="font-mono">student1@test.com / 1234</span>,{" "}
-          <span className="font-mono">driver@test.com / 1234</span>,{" "}
-          <span className="font-mono">admin@test.com / 1234</span>
+        <p className="text-center text-gray-600 mt-4">
+          Don't have an account?{" "}
+          <button
+            onClick={onSwitchToSignup}
+            className="text-blue-600 font-semibold hover:underline"
+          >
+            Sign up
+          </button>
         </p>
       </div>
     </div>

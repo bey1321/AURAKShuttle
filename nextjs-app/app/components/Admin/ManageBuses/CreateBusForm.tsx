@@ -30,14 +30,11 @@ export default function CreateBusForm({
   const form = useForm<BusFormData>({
     resolver: zodResolver(busSchema),
     defaultValues: {
-      plateNumber: "",
+      plate_num: "",
       model: "",
       manufacturer: "",
-      numberOfSeats: 40,
-      year: new Date().getFullYear(),
-      fuelType: "Diesel",
+      no_seats: 40,
       status: "Active",
-      assignment: "Unassigned",
     },
   });
 
@@ -48,14 +45,14 @@ export default function CreateBusForm({
       <DialogHeader>
         <DialogTitle>Add New Bus</DialogTitle>
         <DialogDescription>
-          Fill in details to register a new bus
+          Fill in details to register a new bus.
         </DialogDescription>
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-4 py-4">
         <div className="space-y-2">
           <Label>Plate Number</Label>
-          <Input {...form.register("plateNumber")} placeholder="RAK-1234" />
+          <Input {...form.register("plate_num")} placeholder="RAK-1234" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -72,43 +69,14 @@ export default function CreateBusForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Seats</Label>
             <Input
               type="number"
-              {...form.register("numberOfSeats", { valueAsNumber: true })}
+              {...form.register("no_seats", { valueAsNumber: true })}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Year</Label>
-            <Input
-              type="number"
-              {...form.register("year", { valueAsNumber: true })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Fuel Type</Label>
-            <Select
-              onValueChange={(val) =>
-                form.setValue("fuelType", val as BusFormData["fuelType"])
-              }
-              defaultValue="Diesel"
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Diesel">Diesel</SelectItem>
-                <SelectItem value="Electric">Electric</SelectItem>
-                <SelectItem value="Hybrid">Hybrid</SelectItem>
-                <SelectItem value="Petrol">Petrol</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Status</Label>
             <Select
@@ -118,7 +86,7 @@ export default function CreateBusForm({
               defaultValue="Active"
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Active">Active</SelectItem>
@@ -126,23 +94,6 @@ export default function CreateBusForm({
                   Under Maintenance
                 </SelectItem>
                 <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Assignment</Label>
-            <Select
-              onValueChange={(val) =>
-                form.setValue("assignment", val as BusFormData["assignment"])
-              }
-              defaultValue="Unassigned"
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Assigned">Assigned</SelectItem>
-                <SelectItem value="Unassigned">Unassigned</SelectItem>
               </SelectContent>
             </Select>
           </div>

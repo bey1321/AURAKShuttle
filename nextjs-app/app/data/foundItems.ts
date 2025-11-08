@@ -1,96 +1,70 @@
-import { LostFoundItem } from "./types";
+import { LostFoundItem, BackendFoundItem } from "./types";
+import { lostFoundAPI } from "../lib/api";
 
-export const foundItems: LostFoundItem[] = [
-  {
-    id: 1,
-    item: "Black Backpack",
-    description: "Nike backpack with laptop inside",
-    date: "Oct 20, 2025",
-    location: "Shuttle Route 3",
-    status: "Unclaimed",
-    category: "Bag",
-    type: "Found",
-    reportedBy: "Ahmed Hassan",
-    contactInfo: "ahmed.hassan@aurak.ac.ae",
-    createdAt: "2025-10-20T10:30:00Z",
-  },
-  {
-    id: 2,
-    item: "iPhone 14",
-    description: "Black iPhone with blue case",
-    date: "Oct 19, 2025",
-    location: "Main Campus Stop",
-    status: "Unclaimed",
-    category: "Electronics",
-    type: "Found",
-    reportedBy: "Sara Ahmed",
-    contactInfo: "sara.ahmed@aurak.ac.ae",
-    createdAt: "2025-10-19T14:15:00Z",
-  },
-  {
-    id: 3,
-    item: "Student ID Card",
-    description: "ID card for Ahmed Hassan",
-    date: "Oct 18, 2025",
-    location: "Shuttle Route 1",
-    status: "Claimed",
-    category: "Documents",
-    type: "Found",
-    reportedBy: "Mohammed Ali",
-    contactInfo: "mohammed.ali@aurak.ac.ae",
-    createdAt: "2025-10-18T09:45:00Z",
-    claimedInfo: {
-      claimedBy: "Ahmed Hassan",
-      ClaimerSchoolID: "AUR12345",
-      PhoneNumber: "0501234567",
-      SchoolEmail: "ahmed.hassan@aurak.ac.ae",
-      date: new Date("2025-10-19T11:00:00Z"),
-    },
-  },
-  {
-    id: 4,
-    item: "Blue Water Bottle",
-    description: "Stainless steel bottle with AURAK logo",
-    date: "Oct 17, 2025",
-    location: "RAK Mall Stop",
-    status: "Claimed",
-    category: "Personal",
-    type: "Found",
-    reportedBy: "Fatima Ibrahim",
-    contactInfo: "fatima.ibrahim@aurak.ac.ae",
-    createdAt: "2025-10-17T16:20:00Z",
-    claimedInfo: {
-      claimedBy: "Rania Yusuf",
-      ClaimerSchoolID: "AUR67890",
-      PhoneNumber: "0507654321",
-      SchoolEmail: "rania.yusuf@aurak.ac.ae",
-      date: new Date("2025-10-18T09:50:00Z"),
-    },
-  },
-  {
-    id: 5,
-    item: "Gray Jacket",
-    description: "North Face jacket, size M",
-    date: "Oct 16, 2025",
-    location: "Khatt Terminal",
-    status: "Unclaimed",
-    category: "Clothing",
-    type: "Found",
-    reportedBy: "Omar Khalil",
-    contactInfo: "omar.khalil@aurak.ac.ae",
-    createdAt: "2025-10-16T11:30:00Z",
-  },
-  {
-    id: 6,
-    item: "Textbooks",
-    description: "Engineering textbooks (3 books)",
-    date: "Oct 15, 2025",
-    location: "Shuttle Route 2",
-    status: "Unclaimed",
-    category: "Books",
-    type: "Found",
-    reportedBy: "Layla Mansour",
-    contactInfo: "layla.mansour@aurak.ac.ae",
-    createdAt: "2025-10-15T13:45:00Z",
-  },
-];
+// Convert backend found item to frontend format
+function mapFoundItemToFrontend(
+  item: BackendFoundItem,
+  tripInfo?: any
+): LostFoundItem {
+  // Format date
+  const dateStr = item.date
+    ? typeof item.date === "string"
+      ? item.date.split("T")[0]
+      : item.date
+    : "";
+
+  // Format location from trip info if available
+  const location = tripInfo?.route_name || `Trip ${item.trip_id}`;
+
+  // Map status
+  let status: LostFoundItem["status"] = "Unclaimed";
+  if (item.status === "claimed" || item.status === "Claimed") {
+    status = "Claimed";
+  }
+
+  return {
+    id: item.id,
+    item: item.obj_name,
+    description: item.obj_description || "",
+    date: dateStr,
+    location: location,
+    status: status,
+    category: item.obj_type || "Other",
+    type: "Found" as const,
+    reportedBy: "User", // Will need to get from finder relationship
+    createdAt: dateStr,
+    tripId: item.trip_id,
+  };
+}
+
+// Fetch found items from backend
+export async function getFoundItems(): Promise<LostFoundItem[]> {
+  try {
+    const data = await lostFoundAPI.getFoundItems();
+    // The API returns { found_items: [...] }
+    const items = data.found_items || [];
+    return items.map((item: BackendFoundItem) => mapFoundItemToFrontend(item));
+  } catch (error) {
+    console.error("Error fetching found items:", error);
+    throw error;
+  }
+}
+
+// Report a found item
+export async function reportFoundItem(data: {
+  objName: string;
+  objDescription: string;
+  objType: string;
+  tripId: number;
+}): Promise<LostFoundItem> {
+  try {
+    const response = await lostFoundAPI.reportFoundItem(data);
+    return mapFoundItemToFrontend(response.found_item);
+  } catch (error) {
+    console.error("Error reporting found item:", error);
+    throw error;
+  }
+}
+
+// Legacy export for backward compatibility
+export const foundItems: LostFoundItem[] = [];

@@ -25,13 +25,15 @@ export function Layout({ children, userRole, userName = "User", onLogout, onNavi
     driver: [
       { icon: Home, label: "Driver Dashboard", id: "driver-dashboard" },
       { icon: Bus, label: "My Trips", id: "my-trips" },
+      { icon: Package, label: "Lost and Found", id: "driver-lost-found" },
       { icon: MapPin, label: "Live Tracking", id: "tracking" },
       { icon: Bell, label: "Send Alert", id: "send-alert" },
     ],
     admin: [
       { icon: Home, label: "Admin Dashboard", id: "admin-dashboard" },
-      { icon: Bus, label: "Create Bus", id: "create-bus" },
-      { icon: Bus, label: "Manage Trips", id: "manage-trips" },
+      { icon: Bus, label: "Manage Buses", id: "manage-buses" },
+      { icon: MapPin, label: "Manage Terminals", id: "manage-terminals" },
+      { icon: Calendar, label: "Manage Trips", id: "manage-trips" },
       { icon: Users, label: "Manage Users", id: "manage-users" },
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
       { icon: MapPin, label: "Live Tracking", id: "tracking" },

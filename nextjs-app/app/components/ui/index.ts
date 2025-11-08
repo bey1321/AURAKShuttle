@@ -14,3 +14,5 @@ export * from "./form";
 export * from "./utils";
 export * from "./switch";
 export * from "./tabs";
+export * from "./command";
+export * from "./popover";

@@ -1,189 +1,94 @@
-import { Trip } from "./types";
+import { Trip, BackendTrip } from "./types";
+import { tripAPI } from "../lib/api";
 
-export const trips: Trip[] = [
-  {
-    id: 1,
-    date: "2025-10-28",
-    schedule: "Morning Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "Main Campus",
-    stopTerminal: "Khatt Terminal",
-    startTime: "08:00 AM",
-    endTime: "08:30 AM",
-    ETA: "08:30 AM",
-    status: "Active",
-    type: "regular",
-    passengers: 35,
-  },
-  {
-    id: 2,
-    date: "2025-10-28",
-    schedule: "Return Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "Khatt Terminal",
-    stopTerminal: "Main Campus",
-    startTime: "10:00 AM",
-    endTime: "10:30 AM",
-    ETA: "10:30 AM",
-    status: "Active",
-    type: "regular",
-    passengers: 28,
-  },
-  {
-    id: 3,
-    date: "2025-10-28",
-    schedule: "Afternoon Shuttle",
-    driver: "Sara Ahmed",
-    bus: "Bus C3",
-    startTerminal: "Main Campus",
-    stopTerminal: "RAK Mall",
-    startTime: "02:00 PM",
-    endTime: "02:30 PM",
-    ETA: "02:30 PM",
-    status: "Upcoming",
-    type: "sport",
-    passengers: 15,
-  },
-  {
-    id: 4,
-    date: "2025-10-28",
-    schedule: "Evening Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "RAK Mall",
-    stopTerminal: "Main Campus",
-    startTime: "04:30 PM",
-    endTime: "05:00 PM",
-    ETA: "05:00 PM",
-    status: "Upcoming",
-    type: "regular",
-    passengers: 0,
-  },
-  {
-    id: 5,
-    date: "2025-10-28",
-    schedule: "Special Academic Trip",
-    driver: "Mohammed Ali",
-    bus: "Bus B2",
-    startTerminal: "Main Campus",
-    stopTerminal: "Science Lab",
-    startTime: "11:00 AM",
-    endTime: "11:45 AM",
-    ETA: "11:45 AM",
-    status: "Upcoming",
-    type: "academic",
-    passengers: 20,
-  },
-  {
-    id: 6,
-    date: "2025-10-28",
-    schedule: "Student Life Event Shuttle",
-    driver: "Sara Ahmed",
-    bus: "Bus C3",
-    startTerminal: "Main Campus",
-    stopTerminal: "Sports Complex",
-    startTime: "03:00 PM",
-    endTime: "03:30 PM",
-    ETA: "03:30 PM",
-    status: "Upcoming",
-    type: "Student Life Event",
-    passengers: 10,
-  },
-];
+// Convert backend trip to frontend format
+function mapTripToFrontend(trip: BackendTrip | any): Trip {
+  // Extract route information
+  const routeName = trip.route_name || trip.route?.name || "Unknown Route";
+  const route = trip.route || {};
+  const bus = trip.bus || {};
 
+  // Extract terminal information
+  const startTerminal = route.start_terminal?.terminalName || "Unknown";
+  const startTime = route.start_time || "";
+  const endTime = route.end_time || "";
 
+  // Format date
+  const dateStr = trip.date
+    ? typeof trip.date === "string"
+      ? trip.date
+      : trip.date.split("T")[0]
+    : "";
 
-export const assignedTrips: Trip[] = [
-  {
-    id: 1,
-    date: "2025-10-28",
-    schedule: "Morning Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "Main Campus",
-    stopTerminal: "Khatt Terminal",
-    startTime: "10:30 AM",
-    endTime: "11:00 AM",
-    status: "Active",
-    type: "regular",
-    passengers: 28,
-  },
-  {
-    id: 2,
-    date: "2025-10-28",
-    schedule: "Midday Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "Khatt Terminal",
-    stopTerminal: "Main Campus",
-    startTime: "12:00 PM",
-    endTime: "12:30 PM",
-    status: "Upcoming",
-    type: "regular",
-    passengers: 0,
-  },
-  {
-    id: 3,
-    date: "2025-10-28",
-    schedule: "Afternoon Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "Main Campus",
-    stopTerminal: "RAK Mall",
-    startTime: "02:00 PM",
-    endTime: "02:30 PM",
-    status: "Upcoming",
-    type: "sport",
-    passengers: 15,
-  },
-  {
-    id: 4,
-    date: "2025-10-28",
-    schedule: "Evening Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "RAK Mall",
-    stopTerminal: "Main Campus",
-    startTime: "04:30 PM",
-    endTime: "05:00 PM",
-    status: "Upcoming",
-    type: "regular",
-    passengers: 0,
-  },
-];
+  // Extract middle terminals - we'll need to get this from the route terminals
+  // For now, we'll use an empty array as the backend doesn't directly return this
+  const middleTerminals: string[] = [];
 
-export const todayTrips: Trip[] = [
-  {
-    id: 1,
-    date: "2025-10-28",
-    schedule: "Evening Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "RAK Mall",
-    stopTerminal: "Main Campus",
-    startTime: "04:30 PM",
-    endTime: "05:00 PM",
-    status: "Upcoming",
-    type: "regular",
-    passengers: 20,
-  },
-];
+  // Determine status
+  const status = trip.status || "scheduled";
+  let frontendStatus: Trip["status"] = "Upcoming";
+  if (status === "active" || status === "Active") {
+    frontendStatus = "Active";
+  } else if (status === "completed" || status === "Completed") {
+    frontendStatus = "Completed";
+  } else if (status === "in_progress" || status === "In Progress") {
+    frontendStatus = "In Progress";
+  }
 
-export const upcomingTrips: Trip[] = [
-  {
-    id: 1,
-    date: "2025-10-28",
-    schedule: "Evening Shuttle",
-    driver: "Ahmed Hassan",
-    bus: "Bus A1",
-    startTerminal: "RAK Mall",
-    stopTerminal: "Main Campus",
-    startTime: "04:30 PM",
-    endTime: "05:00 PM",
-    status: "Upcoming",
-    type: "regular",
-    passengers: 20,
-  },
-];
+  return {
+    id: trip.id,
+    date: dateStr,
+    route_name: routeName,
+    status: frontendStatus,
+    bus: bus.id
+      ? `Bus ${bus.plate_num || bus.id}`
+      : trip.bus_id?.toString() || null,
+    driver: trip.driver_id?.toString() || null,
+    startTerminal: startTerminal,
+    middleTerminals: middleTerminals,
+    stopTerminal: route.start_terminal?.terminalName || "Unknown", // Will need proper mapping
+    startTime: startTime,
+    endTime: endTime,
+    type: (route.type || "regular") as Trip["type"],
+    passengers: 0, // Will need to be calculated from reservations
+  };
+}
+
+// Fetch user's trips from backend
+export async function getMyTrips(): Promise<Trip[]> {
+  try {
+    const data = await tripAPI.getMyTrips();
+    return data.map(mapTripToFrontend);
+  } catch (error) {
+    console.error("Error fetching my trips:", error);
+    throw error;
+  }
+}
+
+// Fetch all trips from backend
+export async function getAllTrips(): Promise<Trip[]> {
+  try {
+    const data = await tripAPI.getAllTrips();
+    return data.map(mapTripToFrontend);
+  } catch (error) {
+    console.error("Error fetching all trips:", error);
+    throw error;
+  }
+}
+
+// Fetch trips for feedback
+export async function getTripsForFeedback(): Promise<Trip[]> {
+  try {
+    const data = await tripAPI.getTripsForFeedback();
+    return data.map(mapTripToFrontend);
+  } catch (error) {
+    console.error("Error fetching trips for feedback:", error);
+    throw error;
+  }
+}
+
+// Legacy exports for backward compatibility
+export const trips: Trip[] = [];
+export const assignedTrips: Trip[] = [];
+export const todayTrips: Trip[] = [];
+export const upcomingTrips: Trip[] = [];

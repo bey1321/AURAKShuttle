@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -10,6 +9,7 @@ import {
   DialogDescription,
   Label,
   Input,
+  Button,
 } from "../../ui";
 
 interface ClaimFormProps {
@@ -45,6 +45,7 @@ export default function ClaimForm({
               setClaimForm({ ...claimForm, claimedBy: e.target.value })
             }
           />
+
           <Label>School ID</Label>
           <Input
             value={claimForm.ClaimerSchoolID}
@@ -52,6 +53,7 @@ export default function ClaimForm({
               setClaimForm({ ...claimForm, ClaimerSchoolID: e.target.value })
             }
           />
+
           <Label>Phone Number</Label>
           <Input
             value={claimForm.PhoneNumber}
@@ -59,6 +61,7 @@ export default function ClaimForm({
               setClaimForm({ ...claimForm, PhoneNumber: e.target.value })
             }
           />
+
           <Label>School Email</Label>
           <Input
             value={claimForm.SchoolEmail}
@@ -66,6 +69,7 @@ export default function ClaimForm({
               setClaimForm({ ...claimForm, SchoolEmail: e.target.value })
             }
           />
+
           <Button className="w-full" onClick={onSubmit}>
             Submit Claim
           </Button>

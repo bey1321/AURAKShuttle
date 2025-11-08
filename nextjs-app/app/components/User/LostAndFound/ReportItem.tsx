@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -15,6 +14,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  Button,
 } from "../../ui";
 
 interface ReportItemProps {
@@ -25,6 +25,7 @@ interface ReportItemProps {
   setFormData: (data: any) => void;
   onSubmit: () => void;
   categories: string[];
+  availableLocations: string[];
 }
 
 export default function ReportItem({
@@ -35,6 +36,7 @@ export default function ReportItem({
   setFormData,
   onSubmit,
   categories,
+  availableLocations,
 }: ReportItemProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,6 +50,7 @@ export default function ReportItem({
             value={formData.item}
             onChange={(e) => setFormData({ ...formData, item: e.target.value })}
           />
+
           <Label>Description</Label>
           <Textarea
             value={formData.description}
@@ -55,13 +58,24 @@ export default function ReportItem({
               setFormData({ ...formData, description: e.target.value })
             }
           />
+
           <Label>Location</Label>
-          <Input
+          <Select
             value={formData.location}
-            onChange={(e) =>
-              setFormData({ ...formData, location: e.target.value })
-            }
-          />
+            onValueChange={(v) => setFormData({ ...formData, location: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select location" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableLocations.map((loc) => (
+                <SelectItem key={loc} value={loc}>
+                  {loc}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Label>Category</Label>
           <Select
             value={formData.category}
@@ -78,6 +92,7 @@ export default function ReportItem({
               ))}
             </SelectContent>
           </Select>
+
           <Label>Your Name</Label>
           <Input
             value={formData.reportedBy}
@@ -85,6 +100,7 @@ export default function ReportItem({
               setFormData({ ...formData, reportedBy: e.target.value })
             }
           />
+
           <Label>Contact Info</Label>
           <Input
             value={formData.contactInfo}
@@ -92,6 +108,7 @@ export default function ReportItem({
               setFormData({ ...formData, contactInfo: e.target.value })
             }
           />
+
           <Button className="w-full" onClick={onSubmit}>
             Submit Report
           </Button>

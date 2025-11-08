@@ -1,4 +1,4 @@
-// Type definitions for the mock database
+// Type definitions matching backend responses
 
 export interface Schedule {
   id: number;
@@ -14,29 +14,31 @@ export interface Schedule {
 
 export interface User {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  UserSchoolID: string;
-  role: "student" | "staff";
-  password: string;
+  role: "student" | "staff" | "driver" | "admin";
+  hased_password?: string;
+  phone?: number;
 }
 
-export interface Admin{
-  id:string;
-  name: string;
+export interface Admin {
+  id: number;
+  first_name: string;
+  last_name: string;
   email: string;
   role: "admin";
-  password: string;
+  hased_password?: string;
 }
 
 export interface Driver {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  status: "Active" | "Offline";
-  trips: number;
-  rating: number;
-  password: string;
+  role: "driver";
+  hased_password?: string;
+  phone?: number;
 }
 
 export interface Claim {
@@ -45,6 +47,29 @@ export interface Claim {
   PhoneNumber: string;
   SchoolEmail: string;
   date: Date;
+}
+
+// Backend Lost Item structure
+export interface BackendLostItem {
+  id: number;
+  obj_name: string;
+  obj_description: string;
+  obj_type: string;
+  date: string;
+  status: string;
+  trip_id: number;
+}
+
+// Backend Found Item structure
+export interface BackendFoundItem {
+  id: number;
+  obj_name: string;
+  obj_description: string;
+  obj_type: string;
+  date: string;
+  status: string;
+  trip_id: number;
+  finder_id: number;
 }
 
 export interface LostFoundItem {
@@ -60,6 +85,7 @@ export interface LostFoundItem {
   contactInfo?: string;
   createdAt: string;
   claimedInfo?: Claim;
+  tripId?: number;
 }
 
 export interface ActiveShuttle {
@@ -74,38 +100,70 @@ export interface ActiveShuttle {
   location: string;
 }
 
+// Backend Trip Response structure
+export interface BackendTrip {
+  id: number;
+  route_name: string;
+  date: string;
+  bus_id: number | null;
+  driver_id: number | null;
+  route?: {
+    id: number;
+    name: string;
+    start_terminal_id: number;
+    type: string;
+    start_time: string;
+    end_time: string;
+    start_terminal?: {
+      id: number;
+      terminalName: string;
+      city: string;
+    };
+  };
+  bus?: {
+    id: number;
+    plate_num: string;
+    no_seats: number;
+    model: string | null;
+    manufacturer: string | null;
+    status: string | null;
+  };
+  status?: string;
+}
+
 export interface Trip {
   id: number;
-  date: string; // use string for easier JSON mock data
-  schedule: string; // e.g. "Morning Shuttle"
-  status: "Active" | "Upcoming" | "In Progress" | "Completed";
-  bus: string;
-  driver: string;
+  date: string;
+  schedule?: string; // e.g. "Morning Shuttle" - optional for compatibility
+  status: "Active" | "Upcoming" | "In Progress" | "Completed" | "scheduled";
+  bus?: string | number | null;
+  driver?: string | number | null;
   startTerminal: string;
+  middleTerminals: string[];
   stopTerminal: string;
   startTime: string;
   endTime: string;
-  ETA?: string; // optional
+  ETA?: string;
   type: "regular" | "academic" | "sport" | "Student Life Event";
-  passengers: number;
+  passengers?: number;
+  route_name?: string;
 }
 
-
-// export interface Terminal {
-//   terminal: string;
-//   city: string;
-// }
+export interface Terminal {
+  id: number;
+  terminalName: string;
+  city: string;
+  terminal?: string; // For backward compatibility
+}
 
 export interface Bus {
-  busID: number;
-  plateNumber: string;
-  numberOfSeats: number;
-  model: string;
-  manufacturer: string;
-  year: number;
-  fuelType: "Diesel" | "Electric" | "Hybrid" | "Petrol";
-  status: "Active" | "UnderMaintenance" | "Inactive";
-  assignment: "Assigned" | "Unassigned";
+  id?: number; // Backend uses 'id'
+  busID?: number; // Frontend uses 'busID' for compatibility
+  plate_num: string;
+  no_seats: number | string; // Backend sends as string sometimes
+  model: string | null;
+  manufacturer: string | null;
+  status: string | null;
 }
 
 export interface Notification {
@@ -117,15 +175,20 @@ export interface Notification {
 
 export interface Feedback {
   id: number;
+  trip_id?: number;
   route: string;
   date: string;
-  rating: number;
+  rating?: number;
   comment: string;
-  categories: {
+  categories?: {
     cleanliness: number;
     driver: number;
     timeliness: number;
   };
+  cleanliness?: number;
+  driver_rating?: number;
+  timeliness?: number;
+  user_id?: number;
 }
 
 export interface RecentTrip {
