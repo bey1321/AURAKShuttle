@@ -782,6 +782,35 @@ def approve_registration(registration_id: int,db: db_dependency, user =Depends(g
         )
     
 
+
+@router.get('/registration_request')
+def get_registration_request(db: db_dependency, admin = Depends(get_user)):
+    if not admin or admin['role'] != 'admin':
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f'Unauthorized access.'
+            )
+    
+    try:
+        db.query(Registered).filter(Registered.status == 'requested').all()
+
+        smtm = (
+            select(Registered).
+            where(Registered.status == 'requested')
+            .options(
+                selectinload(Registered.student),
+                selectinload(Registered.route)
+            )
+
+        )
+        return db.scalars(smtm).all()
+
+
+    except Exception as e:
+         raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Uable to get registration requests. {str(e)}'
+        )       
 #lost and found related routes
 @router.get('/remove_item/{id}')
 def removeItem(id: int):

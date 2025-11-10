@@ -61,7 +61,8 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
         
         regular_trips = db.scalars(regular_trips_stmt).all()
         reserved_trips = db.scalars(reserved_trips_stmt).all()
-        
+        all_trips = regular_trips + reserved_trips
+
         # Combine both lists and remove duplicates using trip.id as key
         all_trips_dict = {trip.id: trip for trip in regular_trips}
         for trip in reserved_trips:
@@ -91,7 +92,7 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             }
             response_data.append(trip_data)
         
-        return response_data
+        return all_trips #response_data
 
     except Exception as e:
         print(f"Error getting trips: {e}")
@@ -128,7 +129,7 @@ def getAllTrips(db: db_dependency, user = Depends(get_user)):
             }
             response_data.append(trip_data)
         
-        return response_data
+        return trips #response_data
          
     except Exception as e:
         raise HTTPException(
