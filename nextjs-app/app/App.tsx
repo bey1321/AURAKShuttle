@@ -16,11 +16,14 @@ import {
   AdminManageUsers,
   AdminManageDrivers,
   AdminLostFoundPage,
+  UserScheduleSearch,
 } from "./components";
 import AdminCreateBus from "./components/Admin/ManageBuses/AdminCreateBus";
 import FeedbackPage from "./components/User/FeedBack/FeedbackPage";
 import DriverLostFoundPage from "./components/Driver/LostAndFoundPage/DriverLostAndFound";
 import ManageTerminal from "./components/Admin/ManageTrips/ManageTerminal";
+import UserRouteRegistration from "./components/User/UserRouteRegistration";
+import AdminApproveRegistrations from "./components/Admin/AdminApproveregistration";
 
 type UserRole = "student" | "driver" | "admin";
 
@@ -82,6 +85,8 @@ export default function App() {
         return userRole === "admin" ? <AdminManageDrivers /> : null;
       case "admin-lost-found":
         return userRole === "admin" ? <AdminLostFoundPage /> : null;
+      case "admin-approve-registration":
+        return userRole === "admin" ? <AdminApproveRegistrations /> : null;
 
       // 🔹 Driver
       case "my-trips":
@@ -92,12 +97,14 @@ export default function App() {
       // 🔹 Student
       case "user-lost-found":
         return userRole === "student" ? <LostFoundPage /> : null;
+      case "user-route-registration":
+        return userRole === "student" ? <UserRouteRegistration /> : null;
+        case "schedule":
+          return <UserScheduleSearch />; 
 
       // 🔹 Shared
       case "tracking":
         return <RealTimeTracking />;
-      case "schedule":
-        return <ScheduleSearch />;
       case "feedback":
         return <FeedbackPage />;
 

@@ -9,5 +9,5 @@ export * from "./User/FeedBack/FeedbackPage";
 export * from "./Layout";
 export * from "./User/LostAndFound/LostFoundPage";
 export * from "./RealTimeTracking";
-export * from "./ScheduleSearch";
+export * from "./User/UserScheduleSearch";
 export * from "./User/StudentDashboard";

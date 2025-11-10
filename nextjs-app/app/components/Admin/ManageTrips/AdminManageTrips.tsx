@@ -32,7 +32,7 @@ export function AdminManageTrips() {
   const [routes, setRoutes] = useState<any[]>([]);
   const [terminalsMap, setTerminalsMap] = useState<Record<number, string>>({});
   const [busesMap, setBusesMap] = useState<Record<number, string>>({});
-  // const [driversMap, setDriversMap] = useState<Record<number, string>>({});
+  const [driversMap, setDriversMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -49,12 +49,11 @@ export function AdminManageTrips() {
   const loadTrips = async () => {
     try {
       setLoading(true);
-      // const [routesData, tripsData, buses, drivers, terminals] = await Promise.all([
-      const [routesData, tripsData, buses, terminals] = await Promise.all([
+      const [routesData, tripsData, buses, drivers, terminals] = await Promise.all([
         adminAPI.getRoutes(),
         adminAPI.getTrips(),
         adminAPI.getBuses(),
-        // adminAPI.getDrivers(),
+        adminAPI.getDrivers(),
         adminAPI.getTerminals(),
       ]);
 
@@ -62,7 +61,7 @@ export function AdminManageTrips() {
       setAllTrips(Array.isArray(tripsData) ? tripsData : []);
 
       setBusesMap(Object.fromEntries(buses.map((b: any) => [b.id, b.plate_num])));
-      // setDriversMap(Object.fromEntries(drivers.map((d: any) => [d.id, `${d.first_name} ${d.last_name}`])));
+      setDriversMap(Object.fromEntries(drivers.map((d: any) => [d.id, `${d.first_name} ${d.last_name}`])));
       setTerminalsMap(Object.fromEntries(terminals.map((t: any) => [t.id, t.terminalName])));
     } catch (e: any) {
       console.error("Error loading trips:", e);
@@ -103,19 +102,28 @@ export function AdminManageTrips() {
     setRouteToDelete(route);
     setDeleteRouteDialogOpen(true);
   };
-  const confirmDeleteRoute = async () => {
-    if (!routeToDelete) return;
-    try {
-      await adminAPI.deleteSemesterTrip(routeToDelete.id);
-      await loadTrips();
-      alert("Route and all related trips deleted successfully");
-    } catch (e: any) {
-      alert(e?.message || "Failed to delete route");
-    } finally {
-      setRouteToDelete(null);
-      setDeleteRouteDialogOpen(false);
-    }
-  };
+  // --- Delete Route ---
+const confirmDeleteRoute = async () => {
+  if (!routeToDelete) return;
+
+  try {
+    // Pass routeToDelete.id as route_id
+    console.log("Deleting route ID:", routeToDelete.id);
+    await adminAPI.deleteSemesterTrip(routeToDelete.id);
+
+    // Reload trips after deletion
+    await loadTrips();
+
+    alert("Route and all related trips deleted successfully");
+  } catch (e: any) {
+    console.error("Delete route error:", e);
+    alert(e?.message || "Failed to delete route");
+  } finally {
+    setRouteToDelete(null);
+    setDeleteRouteDialogOpen(false);
+  }
+};
+
   const cancelDeleteRoute = () => {
     setRouteToDelete(null);
     setDeleteRouteDialogOpen(false);
@@ -149,7 +157,7 @@ export function AdminManageTrips() {
   const renderRow = (trip: any) => {
     const route = trip.route || {};
     const bus = trip.bus || {};
-    // const driver = trip.driver || null;
+    const driver = trip.driver || null;
 
     const routeName = route.name || "Unknown Route";
     const routeType = route.type || "Regular";
@@ -158,9 +166,9 @@ export function AdminManageTrips() {
     const startTerminalName = route.start_terminal?.terminalName || terminalsMap[route.start_terminal_id] || "—";
     const terminals = route.terminals || [];
     const busPlate = bus.plate_num || busesMap[trip.bus_id] || "—";
-    // const driverName = driver
-    //   ? `${driver.first_name || ""} ${driver.last_name || ""}`.trim() || "—"
-    //   : driversMap[trip.driver_id] || "—";
+    const driverName = driver
+      ? `${driver.first_name || ""} ${driver.last_name || ""}`.trim() || "—"
+      : driversMap[trip.driver_id] || "—";
     const formattedDate = trip.date
     ? new Date(trip.date).toLocaleDateString()
     : "—";    
@@ -172,7 +180,7 @@ export function AdminManageTrips() {
         <TableCell>{routeType}</TableCell>
         <TableCell>{trip.status || "scheduled"}</TableCell>
         <TableCell>{busPlate}</TableCell>
-        {/* <TableCell>{driverName}</TableCell> */}
+        <TableCell>{driverName}</TableCell>
         <TableCell>{startTerminalName}</TableCell>
         <TableCell>{renderTerminals(terminals)}</TableCell>
         <TableCell>{formattedDate}</TableCell>
@@ -299,7 +307,7 @@ export function AdminManageTrips() {
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Bus</TableHead>
-                  {/* <TableHead>Driver</TableHead> */}
+                  <TableHead>Driver</TableHead>
                   <TableHead>Start Terminal</TableHead>
                   <TableHead>Terminals</TableHead>
                   <TableHead>Date</TableHead>
@@ -314,62 +322,65 @@ export function AdminManageTrips() {
         </CardContent>
       </Card>
 
-      {/* Create/Edit Semester Dialog */}
-      {showCreateSemester && (
-        <Dialog 
-          open={showCreateSemester} 
-          onOpenChange={(open) => {
-            if (!open) {
+      <Dialog open={showCreateSemester} onOpenChange={setShowCreateSemester}>
+  {showCreateSemester && (
+    <DialogContent className="max-w-lg p-0 overflow-hidden">
+      <div className="flex flex-col h-[70vh]">
+        <DialogHeader className="p-6 border-b">
+          <DialogTitle>
+            {editingRoute ? "Edit Semester Trip Route" : "Create Semester Trips"}
+          </DialogTitle>
+          <DialogDescription>
+            {editingRoute
+              ? "Update the semester-wide route configuration."
+              : "Generate recurring trips for the semester."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <CreateSemesterTrips
+            editingRoute={editingRoute}
+            onCancel={() => {
               setShowCreateSemester(false);
               setEditingRoute(null);
-            }
-          }}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingRoute ? "Edit Semester Trip Route" : "Create Semester Trips"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingRoute 
-                  ? "Update the semester-wide route configuration."
-                  : "Generate recurring trips for the semester."}
-              </DialogDescription>
-            </DialogHeader>
-            <CreateSemesterTrips
-              editingRoute={editingRoute}
-              onCancel={() => {
-                setShowCreateSemester(false);
-                setEditingRoute(null);
-              }}
-              onSuccess={() => {
-                setShowCreateSemester(false);
-                setEditingRoute(null);
-                loadTrips();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+            }}
+            onSuccess={() => {
+              setShowCreateSemester(false);
+              setEditingRoute(null);
+              loadTrips();
+            }}
+          />
+        </div>
+      </div>
+    </DialogContent>
+  )}
+</Dialog>
+
 
       {/* Create Single Trip Dialog */}
-      {showCreateSingle && (
-        <Dialog open={showCreateSingle} onOpenChange={setShowCreateSingle}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Single Trip</DialogTitle>
-              <DialogDescription>Configure and create a one-time trip.</DialogDescription>
-            </DialogHeader>
-            <CreateTrip 
-              onCancel={() => setShowCreateSingle(false)}
-              onSuccess={() => {
-                setShowCreateSingle(false);
-                loadTrips();
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={showCreateSingle} onOpenChange={setShowCreateSingle}>
+  {showCreateSingle && (
+    <DialogContent className="max-w-lg p-0 overflow-hidden">
+      <div className="flex flex-col h-[70vh]">
+        <DialogHeader className="p-6 border-b">
+          <DialogTitle>Create Single Trip</DialogTitle>
+          <DialogDescription>Configure and create a one-time trip.</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <CreateTrip
+            onCancel={() => setShowCreateSingle(false)}
+            onSuccess={() => {
+              setShowCreateSingle(false);
+              loadTrips();
+            }}
+          />
+        </div>
+      </div>
+    </DialogContent>
+  )}
+</Dialog>
+
 
       {/* Confirm Delete Trip Dialog */}
       {tripToDelete && (

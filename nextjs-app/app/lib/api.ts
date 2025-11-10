@@ -256,7 +256,7 @@ export const adminAPI = {
       semester_info: any;
       trip_details: any[];
       route_info: any;
-    }>("/admin/semester_trip", {
+    }>("/admin/semester_trips", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -284,13 +284,13 @@ export const adminAPI = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  deleteSemesterTrip: (routeId: number) =>
-    apiCall<{
-      message: string;
-      deleted_trips_count: number;
-    }>(`/admin/semester_trip/${routeId}`, {
-      method: "DELETE",
-    }),
+    deleteSemesterTrip: (route_id: number) =>
+      apiCall<{
+        message: string;
+        deleted_trips_count: number;
+      }>(`/admin/semester_trip/${route_id}`, {
+        method: "DELETE",
+      }),    
     getRoutes: async () => {
       try {
         const res = await apiCall<any>("/admin/routes");
@@ -302,6 +302,10 @@ export const adminAPI = {
         return [];
       }
     },
+    approveRegistration: (registration_id: number) =>
+      apiCall<{ message: string }>(`/admin/approve_registration/${registration_id}`, {
+        method: "POST",
+      }),
 };
 export const userAPI = {
   getMyTrips: () => apiCall<any[]>("/user/get_mytrips"),
@@ -331,6 +335,10 @@ export const userAPI = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+    registerRouteRequest: (route_id: number) =>
+      apiCall<{ message: string }>(`/user/route/${route_id}`, {
+        method: "POST",
+      }),
 };
 
 /* ---------------------- STUDENT/TRIP (Legacy - for backward compatibility) ---------------------- */
@@ -357,14 +365,25 @@ export const driverAPI = {
 
 /* ---------------------- LOST & FOUND ---------------------- */
 export const lostFoundAPI = {
+  // Student routes
   getLostItems: () =>
-    apiCall<{
-      "lost items": any[];
-    }>("/lostfound/lost_item"),
+    apiCall<{ lost_items: Array<{
+      id: number;
+      name: string;
+      description: string;
+      type: string;
+      trip_id: number;
+    }> }>("/lostfound/lost_item"),
+
   getFoundItems: () =>
-    apiCall<{
-      found_items: any[];
-    }>("/lostfound/found_items"),
+    apiCall<{ found_items: Array<{
+      id: number;
+      name: string;
+      description: string;
+      type: string;
+      trip_id: number;
+      status: string;
+    }> }>("/lostfound/found_items"),
 
   reportLostItem: (data: {
     obj_name: string;
@@ -392,7 +411,7 @@ export const lostFoundAPI = {
     trip_id: number;
   }) =>
     apiCall<{
-      found_item: { id: number; name: string; description: string };
+      found_item: { id: number; name: string; description: string; type?: string; trip_id?: number };
     }>("/lostfound/found_item", {
       method: "POST",
       body: JSON.stringify(data),
@@ -403,13 +422,38 @@ export const lostFoundAPI = {
       method: "POST",
     }),
 
-  // Admin Lost & Found routes
+  // ------------------ Admin Routes ------------------ //
+  /**
+   * Get all found items that have claims from students.
+   * The backend already filters sensitive info (like passwords) via response model.
+   */
   getAdminFoundAndClaims: () =>
-    apiCall<any[]>("/lostfound/admin/found_and_claim"),
+    apiCall<Array<{
+      id: number;
+      name: string;
+      description: string;
+      type: string;
+      status: string;
+      trip_id: number;
+      discoveredBy: { id: number; name: string; email?: string }; // filtered user info
+      claim: Array<{
+        id: number;
+        status: string;
+        claimer: { id: number; name: string; email?: string }; // filtered student info
+      }>;
+    }>>("/lostfound/admin/found_and_claim"),
+
+  /**
+   * Approve a student's claim for a found item
+   */
   approveClaim: (claimId: number) =>
     apiCall<{ message: string }>(`/lostfound/admin/approve/claim/${claimId}`, {
       method: "POST",
     }),
+
+  /**
+   * Mark a found item as received by a student
+   */
   markItemReceived: (studentId: number, claimId: number) =>
     apiCall<{ message: string }>(
       `/lostfound/admin/found_recieved/student/${studentId}/claim/${claimId}`,

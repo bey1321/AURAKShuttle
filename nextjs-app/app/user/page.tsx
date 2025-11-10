@@ -3,7 +3,7 @@
 import { StudentDashboard } from "../components/User/StudentDashboard";
 import { Layout } from "../components/Layout";
 import { RealTimeTracking } from "../components/RealTimeTracking";
-import { ScheduleSearch } from "../components/ScheduleSearch";
+import { ScheduleSearch } from "../components/User/UserScheduleSearch";
 import { LostFoundPage } from "../components/User/LostAndFound/LostFoundPage";
 import FeedbackPage from "../components/User/FeedBack/FeedbackPage";
 import { useState } from "react";

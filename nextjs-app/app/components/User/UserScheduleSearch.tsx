@@ -1,39 +1,117 @@
 "use client";
 
 import { Search, Calendar, MapPin, User, Clock, Bus, Filter } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge, Tabs, TabsContent, TabsList, TabsTrigger, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui";
-import React, { useState, useMemo } from "react";
-import { schedules as initialSchedules } from "../data/database";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Badge,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui";
+import React, { useState, useEffect, useMemo } from "react";
+import { userAPI } from "../../lib/api";
 
-export function ScheduleSearch() {
-  const [schedules, setSchedules] = useState(initialSchedules);
+interface Trip {
+  id: number;
+  date: string;
+  status: string;
+  ETA: string;
+  bus_id: number;
+  route_id: number;
+  route_name: string;
+  departure: string;
+  arrival: string;
+  driver: string;
+  capacity: number;
+  available: number;
+  days: string[];
+}
+
+// {
+//   "id": trip.id,
+//   "date": trip.date,
+//   "status": trip.status,
+//   "ETA": trip.ETA,
+//   "bus_id": trip.bus_id,
+//   "route_id": trip.route_id,
+//   "route_name": trip.route.name if trip.route else None
+// }
+
+
+export function UserScheduleSearch() {
+  const [schedules, setSchedules] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [showReserveDialog, setShowReserveDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<Trip | null>(null);
 
   // Filter state
-  const [filterTerminal, setFilterTerminal] = useState("all");
-  const [filterDriver, setFilterDriver] = useState("all");
+  const [filterRoute, setFilterRoute] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [filterTime, setFilterTime] = useState("all");
 
-  // --- Filtered schedules ---
+  // Fetch trips from API
+  useEffect(() => {
+    const fetchTrips = async () => {
+      setLoading(true);
+      try {
+        const tripsData = await userAPI.getAllTrips(); // or getMyTrips()
+        setSchedules(
+          tripsData.map((trip: any) => ({
+            ...trip,
+            departure: trip.ETA || "N/A",
+            arrival: trip.ETA || "N/A", // replace with real arrival if available
+            driver: trip.bus_id ? `Bus ${trip.bus_id}` : "N/A", // placeholder until bus info
+            capacity: trip.bus_id ? 40 : 0, // example, adjust according to backend
+            available: trip.bus_id ? 40 : 0, // same here
+            days: ["Mon", "Tue", "Wed", "Thu", "Fri"], // placeholder, adjust later
+            route: trip.route_name,
+          }))
+        );
+      } catch (err) {
+        console.error(err);
+        alert("Failed to fetch trips");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrips();
+  }, []);
+
+  // Filtered schedules
   const filteredSchedules = useMemo(() => {
     return schedules.filter((s) => {
-      const terminalMatch =
-        filterTerminal === "all" || s.terminal.toLowerCase() === filterTerminal.toLowerCase();
-      const driverMatch = filterDriver === "all" || s.driver.toLowerCase() === filterDriver.toLowerCase();
+      const routeMatch = filterRoute === "all" || s.route_name.toLowerCase() === filterRoute.toLowerCase();
       const dateMatch = !filterDate || s.date === filterDate;
       const timeMatch =
         filterTime === "all" ||
         (filterTime === "morning" && parseInt(s.departure.split(":")[0]) >= 6 && parseInt(s.departure.split(":")[0]) < 12) ||
         (filterTime === "afternoon" && parseInt(s.departure.split(":")[0]) >= 12 && parseInt(s.departure.split(":")[0]) < 18) ||
         (filterTime === "evening" && parseInt(s.departure.split(":")[0]) >= 18 && parseInt(s.departure.split(":")[0]) <= 22);
-      return terminalMatch && driverMatch && dateMatch && timeMatch;
+      return routeMatch && dateMatch && timeMatch;
     });
-  }, [schedules, filterTerminal, filterDriver, filterDate, filterTime]);
+  }, [schedules, filterRoute, filterDate, filterTime]);
 
-  // --- Handle reservation ---
+  // Handle reservation
   const handleReserve = (scheduleId: number) => {
     setSchedules((prev) =>
       prev.map((s) => {
@@ -46,6 +124,8 @@ export function ScheduleSearch() {
     setShowReserveDialog(false);
   };
 
+  if (loading) return <p className="text-center py-20">Loading trips...</p>;
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -54,7 +134,7 @@ export function ScheduleSearch() {
         <p className="text-muted-foreground">Find and book shuttle trips</p>
       </div>
 
-      {/* Search Filters */}
+      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Search Filters</CardTitle>
@@ -63,41 +143,25 @@ export function ScheduleSearch() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Terminal/Location</Label>
-              <Select value={filterTerminal} onValueChange={setFilterTerminal}>
+              <Label>Route</Label>
+              <Select value={filterRoute} onValueChange={setFilterRoute}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select terminal" />
+                  <SelectValue placeholder="Select route" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Terminals</SelectItem>
-                  <SelectItem value="main campus">Main Campus</SelectItem>
-                  <SelectItem value="khatt">Khatt Terminal</SelectItem>
-                  <SelectItem value="mall">RAK Mall</SelectItem>
+                  <SelectItem value="all">All Routes</SelectItem>
+                  {[...new Set(schedules.map((s) => s.route_name))].map((route) => (
+                    <SelectItem key={route} value={route}>
+                      {route}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label>Driver</Label>
-              <Select value={filterDriver} onValueChange={setFilterDriver}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select driver" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Drivers</SelectItem>
-                  <SelectItem value="ahmed hassan">Ahmed Hassan</SelectItem>
-                  <SelectItem value="mohammed ali">Mohammed Ali</SelectItem>
-                  <SelectItem value="sara ahmed">Sara Ahmed</SelectItem>
-                  <SelectItem value="fatima ibrahim">Fatima Ibrahim</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="space-y-2">
               <Label>Date</Label>
               <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
             </div>
-
             <div className="space-y-2">
               <Label>Time Range</Label>
               <Select value={filterTime} onValueChange={setFilterTime}>
@@ -113,25 +177,6 @@ export function ScheduleSearch() {
               </Select>
             </div>
           </div>
-
-          <div className="flex gap-2 mt-4">
-            <Button onClick={() => {}}> 
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFilterTerminal("all");
-                setFilterDriver("all");
-                setFilterDate("");
-                setFilterTime("all");
-              }}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Clear Filters
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -143,7 +188,6 @@ export function ScheduleSearch() {
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
-          {/* List View */}
           {filteredSchedules.map((schedule) => (
             <Card key={schedule.id}>
               <CardContent className="pt-6">
@@ -152,10 +196,9 @@ export function ScheduleSearch() {
                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Bus className="w-6 h-6 text-primary" />
                     </div>
-
                     <div className="flex-1 space-y-3">
                       <div>
-                        <h3>{schedule.route}</h3>
+                        <h3>{schedule.route_name}</h3>
                         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <User className="w-4 h-4" />
@@ -226,7 +269,6 @@ export function ScheduleSearch() {
         </TabsContent>
 
         <TabsContent value="grid">
-          {/* Grid View */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSchedules.map((schedule) => (
               <Card key={schedule.id}>
@@ -235,7 +277,7 @@ export function ScheduleSearch() {
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <Bus className="w-5 h-5 text-primary" />
                     </div>
-                    <CardTitle className="text-base">{schedule.route}</CardTitle>
+                    <CardTitle className="text-base">{schedule.route_name}</CardTitle>
                   </div>
                   <CardDescription>Driver: {schedule.driver}</CardDescription>
                 </CardHeader>
@@ -318,7 +360,7 @@ export function ScheduleSearch() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Route</Label>
-                <Input value={selectedSchedule.route} disabled />
+                <Input value={selectedSchedule.route_name} disabled />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -337,14 +379,6 @@ export function ScheduleSearch() {
               <div className="space-y-2">
                 <Label>Available Seats</Label>
                 <Input value={`${selectedSchedule.available} of ${selectedSchedule.capacity}`} disabled />
-              </div>
-              <div className="space-y-2">
-                <Label>Your Name</Label>
-                <Input placeholder="Enter your full name" />
-              </div>
-              <div className="space-y-2">
-                <Label>Student ID</Label>
-                <Input placeholder="Enter your student ID" />
               </div>
               <div className="flex gap-2">
                 <Button
@@ -374,7 +408,7 @@ export function ScheduleSearch() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Route</Label>
-                <Input value={selectedSchedule.route} disabled />
+                <Input value={selectedSchedule.route_name} disabled />
               </div>
               <div className="space-y-2">
                 <Label>Driver</Label>
@@ -393,7 +427,7 @@ export function ScheduleSearch() {
               <div className="space-y-2">
                 <Label>Operating Days</Label>
                 <div className="flex gap-2">
-                  {selectedSchedule.days.map((day: string) => (
+                  {selectedSchedule.days.map((day) => (
                     <Badge key={day} variant="outline">
                       {day}
                     </Badge>

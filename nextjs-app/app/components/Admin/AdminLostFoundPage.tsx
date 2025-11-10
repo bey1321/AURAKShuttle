@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Eye, Trash2, CheckCircle, Plus } from "lucide-react";
+import { Eye, Trash2, CheckCircle, Plus, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -19,7 +19,20 @@ import {
 import ConfirmDeleteDialog from "../ConfirmDeleteDialog";
 import { lostFoundAPI } from "../../lib/api";
 
-// ✅ Backend-aligned interface
+// ✅ Backend-aligned interfaces for claims
+interface Claim {
+  id: number;
+  status: string;
+  claimer: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+
+// Keep your existing LostFoundItem
 export interface LostFoundItem {
   id: number;
   obj_name: string;
@@ -46,7 +59,12 @@ export function AdminLostFoundPage() {
     trip_id: 0,
   });
 
-  // ✅ Fetch from backend routes
+  // New state for claims modal
+  const [claimsModalOpen, setClaimsModalOpen] = useState(false);
+  const [claimsList, setClaimsList] = useState<Claim[]>([]);
+  const [currentItemForClaims, setCurrentItemForClaims] = useState<LostFoundItem | null>(null);
+
+  // Fetch lost/found items (keep your existing logic)
   const fetchItems = async () => {
     try {
       const [lostResponse, foundResponse] = await Promise.all([
@@ -54,13 +72,11 @@ export function AdminLostFoundPage() {
         lostFoundAPI.getFoundItems(),
       ]);
 
-      // Map lost items and add type
       const lostItems = (lostResponse["lost items"] || []).map((item) => ({
         ...item,
         type: "Lost" as const,
       }));
 
-      // Map found items and add type
       const foundItems = (foundResponse.found_items || []).map((item) => ({
         ...item,
         type: "Found" as const,
@@ -76,75 +92,50 @@ export function AdminLostFoundPage() {
     fetchItems();
   }, []);
 
-  // ✅ Approve claim for found item (Admin only)
-  const handleApproveClaim = async (item: LostFoundItem) => {
+  // ✅ Handle Approve Claim
+  const handleApproveClaim = async (claimId: number) => {
     try {
-      // For admin, we need to get the claim ID first
-      // This would require fetching claims for the item
-      // For now, we'll use the item ID as claim ID (this may need adjustment based on backend)
-      await lostFoundAPI.approveClaim(item.id);
+      await lostFoundAPI.approveClaim(claimId);
       alert("Claim approved successfully!");
       fetchItems();
+      // Refresh claims modal
+      if (currentItemForClaims) handleSeeClaims(currentItemForClaims);
     } catch (err: any) {
       console.error("❌ Failed to approve claim:", err);
       alert(err?.message || "Failed to approve claim. Please try again.");
     }
   };
 
-  // ✅ Simulated delete (since backend lacks DELETE)
-  const handleDeleteConfirmed = async () => {
-    if (!itemToDelete) return;
-    setItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
-    setItemToDelete(null);
+  // ✅ Handle Mark Item Received
+  const handleMarkReceived = async (claimId: number, studentId: number) => {
+    try {
+      await lostFoundAPI.markItemReceived(studentId, claimId);
+      alert("Item marked as received!");
+      setClaimsModalOpen(false);
+      fetchItems();
+    } catch (err: any) {
+      console.error("❌ Failed to mark received:", err);
+      alert(err?.message || "Failed to mark item as received.");
+    }
+  };
+
+  // ✅ Fetch claims for a found item
+  const handleSeeClaims = async (item: LostFoundItem) => {
+    try {
+      const foundClaims = await lostFoundAPI.getAdminFoundAndClaims();
+      const itemClaims = foundClaims.find((i: any) => i.id === item.id)?.claim || [];
+      setClaimsList(itemClaims);
+      setCurrentItemForClaims(item);
+      setClaimsModalOpen(true);
+    } catch (err) {
+      console.error("❌ Failed to fetch claims:", err);
+      alert("Failed to fetch claims.");
+    }
   };
 
   const handleViewDetails = (item: LostFoundItem) => {
     setSelectedItem(item);
     setShowDetailsDialog(true);
-  };
-
-  const handleOpenReportDialog = (type: "Lost" | "Found") => {
-    setReportType(type);
-    setNewItemData({
-      obj_name: "",
-      obj_description: "",
-      obj_type: "",
-      trip_id: 0,
-    });
-    setShowReportDialog(true);
-  };
-
-  // ✅ Handle new report submission
-  const handleReportSubmit = async () => {
-    try {
-      if (reportType === "Lost") {
-        await lostFoundAPI.reportLostItem({
-          obj_name: newItemData.obj_name,
-          obj_description: newItemData.obj_description,
-          obj_type: newItemData.obj_type,
-          trip_id: newItemData.trip_id,
-        });
-      } else {
-        await lostFoundAPI.reportFoundItem({
-          obj_name: newItemData.obj_name,
-          obj_description: newItemData.obj_description,
-          obj_type: newItemData.obj_type,
-          trip_id: newItemData.trip_id,
-        });
-      }
-      alert(`${reportType} item reported successfully!`);
-      setShowReportDialog(false);
-      setNewItemData({
-        obj_name: "",
-        obj_description: "",
-        obj_type: "",
-        trip_id: 0,
-      });
-      fetchItems();
-    } catch (err: any) {
-      console.error("❌ Failed to report item:", err);
-      alert(err?.message || "Failed to report item. Please try again.");
-    }
   };
 
   const renderItemCard = (item: LostFoundItem) => (
@@ -197,10 +188,10 @@ export function AdminLostFoundPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleApproveClaim(item)}
+              onClick={() => handleSeeClaims(item)}
             >
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Claim
+              <Users className="w-4 h-4 mr-1" />
+              See Claims
             </Button>
           </div>
         )}
@@ -243,14 +234,14 @@ export function AdminLostFoundPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleOpenReportDialog("Lost")}
+            onClick={() => setShowReportDialog(true)}
           >
             <Plus className="w-4 h-4 mr-1" /> Report Lost Item
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleOpenReportDialog("Found")}
+            onClick={() => setShowReportDialog(true)}
           >
             <Plus className="w-4 h-4 mr-1" /> Report Found Item
           </Button>
@@ -283,108 +274,63 @@ export function AdminLostFoundPage() {
         )}
       </section>
 
-      {/* Item Details Dialog */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+      {/* Claims Modal */}
+      <Dialog open={claimsModalOpen} onOpenChange={setClaimsModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Item Details</DialogTitle>
+            <DialogTitle>
+              Claims for: {currentItemForClaims?.obj_name}
+            </DialogTitle>
             <DialogDescription>
-              Detailed information about the selected item.
+              List of students who claimed this found item.
             </DialogDescription>
           </DialogHeader>
-          {selectedItem && (
-            <div className="space-y-2 py-4 text-sm">
-              <p>
-                <strong>Item:</strong> {selectedItem.obj_name}
-              </p>
-              <p>
-                <strong>Description:</strong> {selectedItem.obj_description}
-              </p>
-              <p>
-                <strong>Category:</strong> {selectedItem.obj_type}
-              </p>
-              <p>
-                <strong>Type:</strong> {selectedItem.type}
-              </p>
-              <p>
-                <strong>Status:</strong> {selectedItem.status ?? "N/A"}
-              </p>
-              <p>
-                <strong>Trip ID:</strong> {selectedItem.trip_id ?? "N/A"}
-              </p>
-              {selectedItem.date && (
-                <p>
-                  <strong>Date:</strong> {selectedItem.date}
-                </p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          <div className="space-y-2 py-4">
+            {claimsList.length ? (
+              claimsList.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex justify-between items-center gap-2 border p-2 rounded"
+                >
+                  <div>
+  <p>
+    <span className="font-semibold">Name:</span> {c.claimer.first_name} {c.claimer.last_name}
+  </p>
+  <p>
+    <span className="font-semibold">Email:</span> {c.claimer.email}
+  </p>
+  <p className="text-sm text-muted-foreground">
+    <span className="font-semibold">Status:</span> {c.status}
+  </p>
+</div>
 
-      {/* Confirm Delete Dialog */}
-      {itemToDelete && (
-        <ConfirmDeleteDialog
-          open={!!itemToDelete}
-          title={`Delete ${itemToDelete.type} Item`}
-          message={`Are you sure you want to delete ${itemToDelete.type.toLowerCase()} item "${
-            itemToDelete.obj_name
-          }"?`}
-          confirmLabel="Delete Item"
-          onConfirm={handleDeleteConfirmed}
-          onCancel={() => setItemToDelete(null)}
-        />
-      )}
-
-      {/* Report Item Dialog */}
-      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Report {reportType} Item</DialogTitle>
-            <DialogDescription>
-              Fill out the form to report a new {reportType.toLowerCase()} item.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-4">
-            {["obj_name", "obj_description", "obj_type"].map((field) => (
-              <input
-                key={field}
-                className="w-full border p-2 rounded"
-                placeholder={
-                  field === "obj_name"
-                    ? "Item Name"
-                    : field === "obj_description"
-                    ? "Description"
-                    : "Type/Category"
-                }
-                value={(newItemData as any)[field]}
-                onChange={(e) =>
-                  setNewItemData({ ...newItemData, [field]: e.target.value })
-                }
-              />
-            ))}
-            <input
-              className="w-full border p-2 rounded"
-              type="number"
-              placeholder="Trip ID"
-              value={newItemData.trip_id}
-              onChange={(e) =>
-                setNewItemData({
-                  ...newItemData,
-                  trip_id: Number(e.target.value),
-                })
-              }
-            />
-            <div className="flex justify-end gap-2 mt-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowReportDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleReportSubmit}>Submit</Button>
-            </div>
+                  <div className="flex gap-1">
+                    {c.status !== "approved" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleApproveClaim(c.id)}
+                      >
+                        Approve
+                      </Button>
+                    )}
+                    {c.status === "approved" && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() =>
+                          handleMarkReceived(c.id, c.claimer.id)
+                        }
+                      >
+                        Mark Received
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-muted-foreground">No claims yet.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

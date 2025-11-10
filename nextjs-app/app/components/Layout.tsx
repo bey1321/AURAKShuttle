@@ -17,6 +17,7 @@ export function Layout({ children, userRole, userName = "User", onLogout, onNavi
   const navItems = {
     student: [
       { icon: Home, label: "User Dashboard", id: "user-dashboard" },
+      { icon: MessageSquare, label: "Register for a Trip", id: "user-route-registration" },
       { icon: MapPin, label: "Track Shuttle", id: "tracking" },
       { icon: Calendar, label: "Schedule", id: "schedule" },
       { icon: Package, label: "Lost & Found", id: "user-lost-found" },
@@ -34,6 +35,7 @@ export function Layout({ children, userRole, userName = "User", onLogout, onNavi
       { icon: Bus, label: "Manage Buses", id: "manage-buses" },
       { icon: MapPin, label: "Manage Terminals", id: "manage-terminals" },
       { icon: Calendar, label: "Manage Trips", id: "manage-trips" },
+      { icon: MessageSquare, label: "Approve Registrations", id: "admin-approve-registration" },
       { icon: Users, label: "Manage Users", id: "manage-users" },
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
       { icon: MapPin, label: "Live Tracking", id: "tracking" },
