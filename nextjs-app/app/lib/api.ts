@@ -305,7 +305,22 @@ export const adminAPI = {
     approveRegistration: (registration_id: number) =>
       apiCall<{ message: string }>(`/admin/approve_registration/${registration_id}`, {
         method: "POST",
-      }),
+      }),     
+      
+    getRegistrationRequests: () =>
+      apiCall<Array<{
+        id: number;
+        status: string;
+        student: {
+          last_name: any;
+          first_name: any; id: number; name: string; email?: string 
+};
+        route: {
+          days_of_week: any;
+          end_time: any;
+          start_time: any; id: number; name: string 
+};
+      }>>("/admin/registration_request"),
 };
 export const userAPI = {
   getMyTrips: () => apiCall<any[]>("/user/get_mytrips"),
@@ -323,7 +338,7 @@ export const userAPI = {
       method: "DELETE",
     }),
   getMyReviews: () => apiCall<any[]>("/user/my_reviews"),
-  getTripsForFeedback: () => apiCall<any[]>("/user/gettrips_for_feedback"),
+  getTripsForFeedback: () => apiCall<any[]>("/user/getTrips_for_feedback"),
   rateTrip: (data: {
     trip_id: number;
     cleanliness: number;

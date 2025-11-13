@@ -10,8 +10,24 @@ import {
   Badge,
 } from "../../ui";
 import { Bus, Calendar } from "lucide-react";
-import { Feedback } from "../../../data/database";
 
+interface Feedback {
+  id: number;
+  trip_id?: number;
+  route: string;
+  date: string;
+  rating?: number;
+  comment: string;
+  categories?: {
+    cleanliness: number;
+    driver: number;
+    timeliness: number;
+  };
+  cleanliness?: number;
+  driver_rating?: number;
+  timeliness?: number;
+  user_id?: number;
+}
 interface Props {
   feedbackList: Feedback[];
 }
@@ -33,7 +49,7 @@ export default function PreviousFeedbacks({ feedbackList }: Props) {
                 : "bg-red-50 border-red-200"
             }`}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex justify-between items-start">
               <div className="flex items-start gap-3 flex-1">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -68,23 +84,21 @@ export default function PreviousFeedbacks({ feedbackList }: Props) {
             <p className="text-sm">{feedback.comment}</p>
 
             <div className="grid grid-cols-3 gap-2 text-xs">
-              {(["cleanliness", "driver", "timeliness"] as const).map(
-                (aspect) => (
-                  <div
-                    key={aspect}
-                    className={`flex flex-col items-center p-2 rounded ${
-                      feedback.rating >= 3 ? "bg-green-100" : "bg-red-100"
-                    }`}
-                  >
-                    <span className="text-muted-foreground">
-                      {aspect.charAt(0).toUpperCase() + aspect.slice(1)}
-                    </span>
-                    <span className="mt-1 font-medium">
-                      {feedback.categories[aspect]} ⭐
-                    </span>
-                  </div>
-                )
-              )}
+              {(["cleanliness", "driver", "timeliness"] as const).map((aspect) => (
+                <div
+                  key={aspect}
+                  className={`flex flex-col items-center p-2 rounded ${
+                    feedback.rating >= 3 ? "bg-green-100" : "bg-red-100"
+                  }`}
+                >
+                  <span className="text-muted-foreground capitalize">
+                    {aspect}
+                  </span>
+                  <span className="mt-1 font-medium">
+                    {feedback.categories[aspect]} ⭐
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         ))}

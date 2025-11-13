@@ -9,7 +9,25 @@ import {
   CardDescription,
 } from "../../ui";
 import { Star, MessageSquare, ThumbsUp } from "lucide-react";
-import { Feedback } from "../../../data/database";
+
+// Use a local definition of Feedback to fix missing import error.
+interface Feedback {
+  id: number;
+  trip_id?: number;
+  route: string;
+  date: string;
+  rating?: number;
+  comment: string;
+  categories?: {
+    cleanliness: number;
+    driver: number;
+    timeliness: number;
+  };
+  cleanliness?: number;
+  driver_rating?: number;
+  timeliness?: number;
+  user_id?: number;
+}
 
 interface Props {
   feedbackList: Feedback[];
@@ -17,12 +35,10 @@ interface Props {
 
 export default function FeedbackOverview({ feedbackList }: Props) {
   const avgRating =
-    feedbackList.reduce((sum, f) => sum + f.rating, 0) / feedbackList.length ||
-    0;
+    feedbackList.reduce((sum, f) => sum + f.rating, 0) / feedbackList.length || 0;
 
   const aspectAverage = (aspect: keyof Feedback["categories"]) =>
-    feedbackList.reduce((sum, f) => sum + f.categories[aspect], 0) /
-      feedbackList.length || 0;
+    feedbackList.reduce((sum, f) => sum + f.categories[aspect], 0) / feedbackList.length || 0;
 
   return (
     <div className="space-y-4">

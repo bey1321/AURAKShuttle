@@ -4,8 +4,26 @@ import React, { useState, useEffect } from "react";
 import FeedbackOverview from "./FeedbackOverview";
 import PreviousFeedbacks from "./PreviousFeedbacks";
 import NewFeedbackForm from "./NewFeedbackForm";
-import { Feedback } from "../../../data/database";
-import { getMyFeedback } from "../../../data/database";
+// Remove the problematic type import, define Feedback inline instead
+import { tripAPI } from "../../../lib/api";
+
+interface Feedback {
+  id: number;
+  trip_id?: number;
+  route: string;
+  date: string;
+  rating?: number;
+  comment: string;
+  categories?: {
+    cleanliness: number;
+    driver: number;
+    timeliness: number;
+  };
+  cleanliness?: number;
+  driver_rating?: number;
+  timeliness?: number;
+  user_id?: number;
+}
 
 export default function FeedbackPage() {
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
@@ -15,8 +33,27 @@ export default function FeedbackPage() {
     const fetchFeedback = async () => {
       try {
         setLoading(true);
-        const feedback = await getMyFeedback();
-        setFeedbackList(feedback);
+        const feedback = await tripAPI.getMyReviews(); // ✅ backend call
+        setFeedbackList(
+          feedback.map((r: any) => ({
+            id: r.id,
+            trip_id: r.trip_id,
+            route: r.trip?.route_name || "Unknown Route",
+            date: r.trip?.date || "",
+            rating: Math.round(
+              (r.cleanliness + r.driver_rating + r.timeliness) / 3
+            ),
+            comment: r.comment,
+            cleanliness: r.cleanliness,
+            driver_rating: r.driver_rating,
+            timeliness: r.timeliness,
+            categories: {
+              cleanliness: r.cleanliness,
+              driver: r.driver_rating,
+              timeliness: r.timeliness,
+            },
+          }))
+        );
       } catch (error) {
         console.error("Error fetching feedback:", error);
         alert("Failed to load feedback. Please try again.");

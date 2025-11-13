@@ -2,16 +2,26 @@
 
 import React, { useEffect, useState } from "react";
 import { adminAPI } from "../../lib/api";
-import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { CheckCircle2, Loader2, User } from "lucide-react";
+import { CheckCircle2, Loader2, User, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface Registration {
   id: number;
-  student_name: string;
-  route_name: string;
   status: string;
+  first_name: string;
+  last_name: string;
+  student_email: string;
+  route_name: string;
+  start_time: string;
+  end_time: string;
+  days_of_week: string[];
 }
 
 const AdminApproveRegistrations = () => {
@@ -20,10 +30,23 @@ const AdminApproveRegistrations = () => {
   const [approvingId, setApprovingId] = useState<number | null>(null);
 
   const fetchRegistrations = async () => {
+    setLoading(true);
     try {
-      const data = await adminAPI.getPendingRegistrations();
-      setRegistrations(data.registrations);
-    } catch {
+      const data = await adminAPI.getRegistrationRequests();
+      const mapped: Registration[] = data.map((r) => ({
+        id: r.id,
+        status: r.status,
+        first_name: r.student.first_name,
+        last_name: r.student.last_name,
+        student_email: r.student.email ?? "",
+        route_name: r.route.name,
+        start_time: r.route.start_time,
+        end_time: r.route.end_time,
+        days_of_week: r.route.days_of_week,
+      }));
+      setRegistrations(mapped);
+    } catch (err) {
+      console.error(err);
       toast.error("Failed to load pending registrations");
     } finally {
       setLoading(false);
@@ -40,7 +63,8 @@ const AdminApproveRegistrations = () => {
       const res = await adminAPI.approveRegistration(id);
       toast.success(res.message || "Registration approved");
       setRegistrations((prev) => prev.filter((r) => r.id !== id));
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Approval failed");
     } finally {
       setApprovingId(null);
@@ -71,11 +95,24 @@ const AdminApproveRegistrations = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <User className="w-5 h-5 text-primary" />
-              {reg.student_name}
+              {reg.first_name} {reg.last_name}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>Email: {reg.student_email}</p>
             <p>Route: {reg.route_name}</p>
+            <p>
+              <Clock className="w-4 h-4 inline-block mr-1" /> {reg.start_time} -{" "}
+              {reg.end_time}
+            </p>
+            <p>
+              <MapPin className="w-4 h-4 inline-block mr-1" />
+              Days:{" "}
+              {Array.isArray(reg.days_of_week) && reg.days_of_week.length > 0
+                ? reg.days_of_week.join(", ")
+                : "N/A"}
+            </p>
+
             <p>Status: {reg.status}</p>
 
             <Button
