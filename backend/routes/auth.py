@@ -15,7 +15,7 @@ import hashlib
 
 load_dotenv()
 
-router = APIRouter(prefix='/auth', tags=['auth'])
+router = APIRouter(prefix='/auth', tags=['Auth'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 

@@ -14,6 +14,7 @@ from db.models.bus import Bus
 from db.models.rating import Rating
 from db.models.route import Route
 from db.models.tripreservation import TripReservation
+from db.models.tripterminal import TripTerminal
 
 from schema.trip import TripResponse
 from schema.rating import RatingRequest, RatingResponse
@@ -23,7 +24,7 @@ from datetime import datetime, timedelta
 from typing import List
 
 
-router = APIRouter(prefix='/user', tags=['Trip'])
+router = APIRouter(prefix='/user', tags=['User'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
@@ -137,18 +138,7 @@ def getAllTrips(db: db_dependency, user = Depends(get_user)):
             detail=f'Internal Server Error: {str(e)}'
         )
 
-"""@router.get('/get_trip/{id}', status_code=status.HTTP_200_OK)
-def getTrip(id: int, db: db_dependency, user = Depends(get_user) ):
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Unauthorized access')
 
-    try:
-
-        pass
-
-    except:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
-"""
 
 
 @router.post('/reserve_seat/{trip_id}', status_code=status.HTTP_201_CREATED)
@@ -300,6 +290,7 @@ def get_my_reviews(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching reviews: {str(e)}"
         )
+
 @router.get(
     "/getTrips_for_feedback",
     response_model=List[TripResponse]
@@ -397,6 +388,39 @@ def rate_trip(rating: RatingRequest, db: db_dependency, user=Depends(get_user)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error adding rating: {str(e)}"
+        )
+
+
+
+@router.get('/routes')
+def get_routes(db: db_dependency, user=Depends(get_user)):
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authorized"
+        )
+    
+    try:
+        query = (
+                select(Route, Registered.status)
+                .outerjoin(
+                    Registered,
+                    (Registered.route_id == Route.id) & (Registered.student_id == user['id'])
+                )
+                .options(
+                    selectinload(Route.start_terminal),
+                    selectinload(Route.terminals).selectinload(TripTerminal.terminal)
+                )
+            )
+        
+        return db.scalars(query).all()
+
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting routes: {str(e)}"
         )
 
 
