@@ -126,7 +126,6 @@ async def keep_alive(websocket: WebSocket):
 
 
 
-
 @router.websocket("/ws/student/trip/{trip_id}")
 async def student_websocket(websocket: WebSocket, trip_id: int, student=Depends(get_user), db: AsyncSession=Depends(get_async_db)):
     if not student:
