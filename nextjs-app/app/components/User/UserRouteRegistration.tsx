@@ -128,7 +128,7 @@ export default function UserRouteRegistration() {
                 <p className="text-foreground font-medium">Stops:</p>
                 <ul className="list-disc list-inside text-xs">
                   {route.terminals.map((stop, index) => (
-                    <li key={index}>{stop.terminal.terminalName}</li>
+                    <li key={index}>{stop.terminal?.terminalName || "Unnamed Terminal"}</li>
                   ))}
                 </ul>
               </div>

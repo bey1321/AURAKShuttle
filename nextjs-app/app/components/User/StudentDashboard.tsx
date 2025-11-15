@@ -29,6 +29,7 @@ import {
 } from "../ui";
 import React, { useState } from "react";
 import { notifications, upcomingTrips, nextShuttle } from "../../data/database";
+import GpsDashboard from "../GpsDashboard";
 
 interface StudentDashboardProps {
   onNavigate?: (page: string) => void;
@@ -99,6 +100,8 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      <GpsDashboard role="student" userId={123} tripId={456} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Next Available Shuttle */}
