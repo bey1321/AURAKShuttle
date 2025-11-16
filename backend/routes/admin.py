@@ -5,8 +5,6 @@ from db.models.trip import Trip
 from db.models.terminal import Terminal
 from db.models.route import Route
 from db.models.tripterminal import TripTerminal
-from db.models.registered import Registered
-from db.models.rating import Rating
 
 from db.setup import get_db
 from middleware.role import get_user
@@ -32,65 +30,15 @@ from schema.trip import (
 
 router = APIRouter(
     prefix="/admin",
-    tags=["Admin"],
+    tags=["admin"],
 )
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.post('/create_user', status_code= status.HTTP_201_CREATED)
-def create_user(data: UserCreateRequest, db:db_dependency, admin = Depends(get_user)):
-
-    if not admin or admin['role'] != 'admin':
-        raise HTTPException(status_code= status.HTTP_403_FORBIDDEN, detail = 'Unauthorized access')
-    
-    try:
-        newUser = User(
-            first_name = data.first_name,
-            last_name = data.last_name,
-            email = data.email,
-            role = data.role,
-            hased_password = hash_password(data.password)
-        )
-
-        db.add(newUser)
-        db.commit()
-
-        return {'message': 'New user created!'}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail= f'Unable to create user. {str(e)}')
-
-@router.delete('/user/{user_id}', status_code= status.HTTP_200_OK)
-def delete_user_account(user_id: int,  db:db_dependency, admin = Depends(get_user)):
-
-    if not admin or admin['role'] != 'admin':
-        raise HTTPException(status_code= status.HTTP_403_FORBIDDEN, detail = 'Unauthorized access')
-    
-    if user_id == admin['id']:
-        raise HTTPException(status_code= status.HTTP_406_NOT_ACCEPTABLE, detail = 'Cannot delelte own account!')
-    
-    try:
-
-        user = db.query(User).filter(User.id == user_id).first()
-
-        db.delete(user)
-        db.commit()
-
-        return {'message': 'User account deleted!'}
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail= f'Unable to delete user account. {str(e)}')
-
-
-
-@router.get('/all_users') #, response_model= List[UserResponse]
+@router.get('/all_users', response_model= List[UserResponse])
 def get_users(db: db_dependency):
     try:
-        users = db.query(User).filter(User.role.notin_(['driver', 'admin'])).all()
+        users = db.query(User).filter(User.role != 'driver' or User.role !='admin').all()
         return users
     
     except Exception as e:
@@ -98,7 +46,7 @@ def get_users(db: db_dependency):
 
 
 #driver related routes
-@router.get('/drivers') #, response_model=List[DriverResponse]
+@router.get('/drivers', response_model=List[DriverResponse])
 def get_driver(db: db_dependency 
 ):
     try:
@@ -112,7 +60,7 @@ def get_driver(db: db_dependency
 
 
 @router.post('/create/driver', status_code=status.HTTP_201_CREATED)
-def createDriver(driver: newDriver, db:db_dependency):
+def createDriver(driver: UserCreateRequest, db:db_dependency):
     try:
         new_user = User(
             email=driver.email,
@@ -808,95 +756,8 @@ def get_all_routes(db: db_dependency):
         )
     
 
-
-@router.post('/approve_registration/{registration_id}')
-def approve_registration(registration_id: int,db: db_dependency, user =Depends(get_user) ):
-    if not user or user['role'] != 'admin':
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail= 'Unauthorized access')
-    
-    reg = db.query(Registered).filter(Registered.id == registration_id).first()
-
-    if not reg:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail= 'Unable to find regisration request')
-    
-    try:
-        reg.status = 'approved'
-
-        db.commit()
-
-        return {'message': 'approved registered'}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Uable to approve registration. {str(e)}'
-        )
-    
-
-
-@router.get('/registration_request')
-def get_registration_request(db: db_dependency, admin = Depends(get_user)):
-    if not admin or admin['role'] != 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f'Unauthorized access.'
-            )
-    
-    try:
-        db.query(Registered).filter(Registered.status == 'requested').all()
-
-        smtm = (
-            select(Registered).
-            where(Registered.status == 'requested')
-            .options(
-                selectinload(Registered.student),
-                selectinload(Registered.route)
-            )
-
-        )
-        return db.scalars(smtm).all()
-
-
-    except Exception as e:
-         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Uable to get registration requests. {str(e)}'
-        )       
 #lost and found related routes
-
-
-@router.get('/feedback', status_code= status.HTTP_200_OK)
-def get_feedbacks(db: db_dependency, admin = Depends(get_user)):
-
-    if not admin or admin['role'] != 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f'Unauthorized access.'
-            )
-
-    try:
-        
-        
-        query = (
-            select(Rating)
-            .join(Trip)
-            .options(
-                selectinload(Trip.route),
-                selectinload(Trip.driver),
-                selectinload(Trip.bus)
-            )
-        )
-
-        return db.scalars(query).all()
-    
-
-    except Exception as e:
-         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f'Uable to get feedbacks. {str(e)}'
-        )       
-
-
+@router.get('/remove_item/{id}')
 def removeItem(id: int):
     pass
 

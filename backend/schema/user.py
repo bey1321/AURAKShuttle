@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+
 
 
 class UserCreateRequest(BaseModel):
@@ -7,7 +7,6 @@ class UserCreateRequest(BaseModel):
     password: str
     first_name : str
     last_name : str
-    role : str
 
 
 class UserLoginRequest(BaseModel):

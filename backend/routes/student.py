@@ -14,7 +14,6 @@ from db.models.bus import Bus
 from db.models.rating import Rating
 from db.models.route import Route
 from db.models.tripreservation import TripReservation
-from db.models.tripterminal import TripTerminal
 
 from schema.trip import TripResponse
 from schema.rating import RatingRequest, RatingResponse
@@ -24,7 +23,7 @@ from datetime import datetime, timedelta
 from typing import List
 
 
-router = APIRouter(prefix='/user', tags=['User'])
+router = APIRouter(prefix='/user', tags=['Trip'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
@@ -39,7 +38,7 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             select(Trip)
             .join(Route, Trip.route_id == Route.id)
             .join(Registered, Registered.route_id == Route.id)
-            .where(Registered.student_id == user['id'], Registered.status == 'approved')
+            .where(Registered.student_id == user['id'])
             .options(
                 selectinload(Trip.route), 
                 selectinload(Trip.bus)
@@ -62,8 +61,7 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
         
         regular_trips = db.scalars(regular_trips_stmt).all()
         reserved_trips = db.scalars(reserved_trips_stmt).all()
-        all_trips = regular_trips + reserved_trips
-
+        
         # Combine both lists and remove duplicates using trip.id as key
         all_trips_dict = {trip.id: trip for trip in regular_trips}
         for trip in reserved_trips:
@@ -93,7 +91,7 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             }
             response_data.append(trip_data)
         
-        return all_trips #response_data
+        return response_data
 
     except Exception as e:
         print(f"Error getting trips: {e}")
@@ -130,7 +128,7 @@ def getAllTrips(db: db_dependency, user = Depends(get_user)):
             }
             response_data.append(trip_data)
         
-        return trips #response_data
+        return response_data
          
     except Exception as e:
         raise HTTPException(
@@ -138,7 +136,18 @@ def getAllTrips(db: db_dependency, user = Depends(get_user)):
             detail=f'Internal Server Error: {str(e)}'
         )
 
+"""@router.get('/get_trip/{id}', status_code=status.HTTP_200_OK)
+def getTrip(id: int, db: db_dependency, user = Depends(get_user) ):
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Unauthorized access')
 
+    try:
+
+        pass
+
+    except:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = 'Internal Server Error')
+"""
 
 
 @router.post('/reserve_seat/{trip_id}', status_code=status.HTTP_201_CREATED)
@@ -290,7 +299,6 @@ def get_my_reviews(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching reviews: {str(e)}"
         )
-
 @router.get(
     "/getTrips_for_feedback",
     response_model=List[TripResponse]
@@ -391,69 +399,4 @@ def rate_trip(rating: RatingRequest, db: db_dependency, user=Depends(get_user)):
         )
 
 
-
-@router.get('/routes')
-def get_routes(db: db_dependency, user=Depends(get_user)):
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not authorized"
-        )
-    
-    try:
-        query = (
-                select(Route, Registered.status)
-                .outerjoin(
-                    Registered,
-                    (Registered.route_id == Route.id) & (Registered.student_id == user['id'])
-                )
-                .options(
-                    selectinload(Route.start_terminal),
-                    selectinload(Route.terminals).selectinload(TripTerminal.terminal)
-                )
-            )
-        
-        return db.scalars(query).all()
-
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting routes: {str(e)}"
-        )
-
-
-
-@router.post('/route/{route_id}')
-def register_route_request(route_id: int, db: db_dependency, user=Depends(get_user)):
-    if not user:
-        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail = "Unauthorized access. Please login")
-    
-
-    try:
-        student = db.query(User).filter(User.id== user['id']).first()
-
-        if not student  :
-            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail = "Unable to find user in the database")
-        
-        route = db.query(Route).filter(Route.id == route_id).first()
-
-        if not route:
-            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail = "Unable to find route in the database")
-
-        
-        new_reg = Registered(
-            route_id = route_id,
-            student_id = student.id
-        )
-
-        db.add(new_reg)
-        db.commit()
-
-        return {'message': 'registration requested'}
-
-
-    except Exception as e:
-        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail = f"Internal Server Error. {str(e)}")
 #routes related to gps tracking

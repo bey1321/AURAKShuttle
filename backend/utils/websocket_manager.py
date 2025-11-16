@@ -51,14 +51,12 @@ class GPSConnectionManager:
                 for connection in self.active_connections[key]:
                     await self.send_personal_message(message, connection)
 
-
     async def broadcast_to_admins(self, message: dict):
         admin_keys = [k for k in self.active_connections.keys() if k.startswith('admin:')]
 
         for key in admin_keys:
             for connection in self.active_connections[key]:
                 await self.send_personal_message(message, connection)
-
 
     async def broadcast_to_trip(self, trip_id:int, message: dict):
 
@@ -67,7 +65,6 @@ class GPSConnectionManager:
         for key in keys:
             for connection in self.active_connections[key]:
                 await self.send_personal_message(message, connection)
-
 
 
 gps_manager = GPSConnectionManager()
