@@ -6,6 +6,8 @@ from routes.admin import router as admin
 from routes.student import router as student
 from routes.driver import router as driver
 from routes.lostfound import router as lostfound
+from routes.gps import router as gps
+
 
 from middleware.auth import AuthMiddleware
 
@@ -29,7 +31,7 @@ app.include_router(admin)
 app.include_router(student)
 app.include_router(driver)
 app.include_router(lostfound)
-
+app.include_router(gps)
 
 @app.get('/')
 def greet():

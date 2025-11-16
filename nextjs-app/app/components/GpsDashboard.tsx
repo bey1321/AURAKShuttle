@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "./ui";
 
-const WEBSOCKET_URL = "ws://localhost:8000/gps"; // change this to your backend URL
+const WEBSOCKET_URL = "ws://localhost:8000"; // change this to your backend URL
 
 export default function GpsDashboard({ role, userId, tripId }) {
   const [locations, setLocations] = useState({});
@@ -12,13 +12,12 @@ export default function GpsDashboard({ role, userId, tripId }) {
     let ws;
 
     if (role === "student") {
-      ws = new WebSocket(`${WEBSOCKET_URL}/ws/student/trip/${tripId}`);
+      ws = new WebSocket(`ws://localhost:8000/gps/ws/student/trip/${tripId}`);
     } else if (role === "admin") {
-      ws = new WebSocket(`${WEBSOCKET_URL}/ws/admin/${userId}`);
+      ws = new WebSocket(`${WEBSOCKET_URL}/ws/admin`);
     } else if (role === "driver") {
       ws = new WebSocket(`${WEBSOCKET_URL}/ws/driver/${userId}`);
     }
-
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -28,7 +27,10 @@ export default function GpsDashboard({ role, userId, tripId }) {
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
 
-      if (message.type === "location_update" || message.type === "bus_location") {
+      if (
+        message.type === "location_update" ||
+        message.type === "bus_location"
+      ) {
         setLocations((prev) => ({
           ...prev,
           [message.data.trip_id]: message.data,
@@ -79,13 +81,16 @@ export default function GpsDashboard({ role, userId, tripId }) {
           <CardContent>
             <h2 className="text-lg font-bold mb-1">Trip #{loc.trip_id}</h2>
             <p>
-              <span className="font-semibold">Bus:</span> {loc.bus_number || "N/A"}
+              <span className="font-semibold">Bus:</span>{" "}
+              {loc.bus_number || "N/A"}
             </p>
             <p>
-              <span className="font-semibold">Lat:</span> {loc.latitude.toFixed(5)}
+              <span className="font-semibold">Lat:</span>{" "}
+              {loc.latitude.toFixed(5)}
             </p>
             <p>
-              <span className="font-semibold">Lng:</span> {loc.longitude.toFixed(5)}
+              <span className="font-semibold">Lng:</span>{" "}
+              {loc.longitude.toFixed(5)}
             </p>
             <p>
               <span className="font-semibold">Speed:</span> {loc.speed} km/h
@@ -104,7 +109,12 @@ export default function GpsDashboard({ role, userId, tripId }) {
       {/* Driver controls for testing */}
       {role === "driver" && (
         <button
-          onClick={() => sendDriverLocation(25.2048 + Math.random() * 0.01, 55.2708 + Math.random() * 0.01)}
+          onClick={() =>
+            sendDriverLocation(
+              25.2048 + Math.random() * 0.01,
+              55.2708 + Math.random() * 0.01
+            )
+          }
           className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
         >
           Send Random Location

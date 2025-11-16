@@ -36,14 +36,15 @@ const AdminApproveRegistrations = () => {
       const mapped: Registration[] = data.map((r) => ({
         id: r.id,
         status: r.status,
-        first_name: r.student.first_name,
-        last_name: r.student.last_name,
-        student_email: r.student.email ?? "",
-        route_name: r.route.name,
-        start_time: r.route.start_time,
-        end_time: r.route.end_time,
-        days_of_week: r.route.days_of_week,
+        first_name: r.student?.first_name ?? "",
+        last_name: r.student?.last_name ?? "",
+        student_email: r.student?.email ?? "",
+        route_name: r.route?.name ?? "",
+        start_time: r.route?.start_time ?? "",
+        end_time: r.route?.end_time ?? "",
+        days_of_week: r.route?.days_of_week ?? [],
       }));
+
       setRegistrations(mapped);
     } catch (err) {
       console.error(err);

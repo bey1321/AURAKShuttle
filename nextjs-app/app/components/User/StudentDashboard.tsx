@@ -101,7 +101,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
         </Card>
       </div>
 
-      <GpsDashboard role="student" userId={123} tripId={456} />
+      <GpsDashboard role="student" userId={3} tripId={1} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Next Available Shuttle */}
