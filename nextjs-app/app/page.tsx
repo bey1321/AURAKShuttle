@@ -1,8 +1,7 @@
-// app/page.tsx
 "use client";
 
-import App from "./App";
+import Landing from "./components/Landing";
 
 export default function Page() {
-  return <App />;
+  return <Landing />;
 }

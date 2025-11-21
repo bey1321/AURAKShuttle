@@ -10,7 +10,7 @@ import {
   AdminDashboard,
   LostFoundPage,
   RealTimeTracking,
-  ScheduleSearch,
+  // ScheduleSearch,
   DriverTrips,
   AdminManageTrips,
   AdminManageUsers,
@@ -27,10 +27,20 @@ import AdminApproveRegistrations from "./components/Admin/AdminApproveregistrati
 
 type UserRole = "student" | "driver" | "admin";
 
-export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [userName, setUserName] = useState("");
+export default function App({
+  hideSidebar = false,
+  initialLoggedIn = false,
+  initialUserRole = null,
+  initialUserName = "",
+}: {
+  hideSidebar?: boolean;
+  initialLoggedIn?: boolean;
+  initialUserRole?: UserRole | null;
+  initialUserName?: string;
+}) {
+  const [isLoggedIn, setIsLoggedIn] = useState(initialLoggedIn);
+  const [userRole, setUserRole] = useState<UserRole | null>(initialUserRole);
+  const [userName, setUserName] = useState(initialUserName);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [showSignUp, setShowSignUp] = useState(false);
 
@@ -120,6 +130,7 @@ export default function App() {
       onLogout={handleLogout}
       onNavigate={setCurrentPage}
       currentPage={currentPage}
+      hideSidebar={hideSidebar}
     >
       {renderPage()}
     </Layout>
