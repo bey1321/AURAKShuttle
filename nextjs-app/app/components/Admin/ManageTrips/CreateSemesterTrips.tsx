@@ -33,6 +33,20 @@ const semesterSchema = z.object({
 
 type SemesterForm = z.infer<typeof semesterSchema>;
 
+const semesterDefaultValues: SemesterForm = {
+  name: "",
+  start_date: "",
+  end_date: "",
+  days_of_week: [],
+  start_time: "",
+  end_time: "",
+  type: "regular",
+  bus_id: null,
+  driver_id: null,
+  start_terminal_id: 0,
+  terminals: [],
+};
+
 export default function CreateSemesterTrips({
   onCancel,
   editingRoute,
@@ -48,14 +62,11 @@ export default function CreateSemesterTrips({
     control,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<SemesterForm>({
     resolver: zodResolver(semesterSchema),
-    defaultValues: {
-      days_of_week: [],
-      type: "regular",
-      terminals: [],
-    },
+    defaultValues: semesterDefaultValues,
   });
 
   const [terminals, setTerminals] = useState<any[]>([]);
@@ -84,29 +95,67 @@ export default function CreateSemesterTrips({
     })();
   }, []);
 
-  // Populate form when editing
   useEffect(() => {
-    if (editingRoute) {
-      const route = editingRoute;
-      const terminalIds =
-        route.terminals?.map((tt: any) =>
-          typeof tt === "number" ? tt : tt.terminal_id || tt.terminal?.id
-        ) || [];
-
-      setValue("name", route.name || "");
-      setValue("type", route.type || "regular");
-      setValue("start_time", route.start_time || "");
-      setValue("end_time", route.end_time || "");
-      setValue("days_of_week", route.days_of_week || []);
-      setValue("start_terminal_id", route.start_terminal_id || route.start_terminal?.id || 0);
-      setValue("terminals", terminalIds);
-
-      if (route.start_date) setValue("start_date", route.start_date);
-      if (route.end_date) setValue("end_date", route.end_date);
-      if (route.bus_id) setValue("bus_id", route.bus_id);
-      if (route.driver_id) setValue("driver_id", route.driver_id);
+    if (!editingRoute) {
+      reset(semesterDefaultValues);
+      return;
     }
-  }, [editingRoute, setValue]);
+
+    const route = editingRoute;
+
+    const normalizeDate = (dateValue: string | null | undefined) => {
+      if (!dateValue) return "";
+      return dateValue.includes("T") ? dateValue.split("T")[0] : dateValue;
+    };
+
+    const normalizeTime = (timeValue: string | null | undefined) => {
+      if (!timeValue) return "";
+      return timeValue.length > 5 ? timeValue.slice(0, 5) : timeValue;
+    };
+
+    const normalizeDays = (days: any): string[] => {
+      if (Array.isArray(days)) return days;
+      if (typeof days === "string" && days.trim().length > 0) {
+        try {
+          const parsed = JSON.parse(days);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          return days
+            .split(",")
+            .map((d: string) => d.trim())
+            .filter(Boolean);
+        }
+      }
+      return [];
+    };
+
+    const terminalIds =
+      route.terminals
+        ?.map((tt: any) => {
+          if (typeof tt === "number") return tt;
+          return tt.terminal_id || tt.terminal?.id || tt.id || null;
+        })
+        .filter((id: number | null): id is number => typeof id === "number") ||
+      [];
+
+    reset({
+      ...semesterDefaultValues,
+      name: route.name || "",
+      type: route.type || "regular",
+      start_time: normalizeTime(route.start_time),
+      end_time: normalizeTime(route.end_time),
+      days_of_week: normalizeDays(route.days_of_week),
+      start_terminal_id:
+        route.start_terminal_id ||
+        route.start_terminal?.id ||
+        semesterDefaultValues.start_terminal_id,
+      terminals: terminalIds,
+      start_date: normalizeDate(route.start_date),
+      end_date: normalizeDate(route.end_date),
+      bus_id: route.bus_id ?? null,
+      driver_id: route.driver_id ?? null,
+    });
+  }, [editingRoute, reset]);
 
   // --- Submit Handler ---
   const submit = async (data: SemesterForm) => {
@@ -120,8 +169,8 @@ export default function CreateSemesterTrips({
         start_time: data.start_time,
         end_time: data.end_time,
         type: data.type,
-        bus_id: data.bus_id ?? null,
-        driver_id: data.driver_id ?? null,
+        bus_id: data.bus_id ?? undefined,
+        driver_id: data.driver_id ?? undefined,
         start_terminal_id: data.start_terminal_id,
         terminals: data.terminals,
       };
@@ -136,7 +185,10 @@ export default function CreateSemesterTrips({
 
       onSuccess?.();
     } catch (e: any) {
-      alert(e?.message || `❌ Failed to ${editingRoute ? "update" : "create"} semester trips`);
+      alert(
+        e?.message ||
+          `❌ Failed to ${editingRoute ? "update" : "create"} semester trips`
+      );
     } finally {
       setSubmitting(false);
     }
@@ -157,13 +209,24 @@ export default function CreateSemesterTrips({
   const toggleTerminal = (id: number) => {
     const current = watch("terminals");
     if (current.includes(id)) {
-      setValue("terminals", current.filter((t) => t !== id));
+      setValue(
+        "terminals",
+        current.filter((t) => t !== id)
+      );
     } else {
       setValue("terminals", [...current, id]);
     }
   };
 
-  const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4 py-4">
@@ -171,7 +234,9 @@ export default function CreateSemesterTrips({
       <div className="space-y-2">
         <Label>Name</Label>
         <Input {...register("name")} />
-        {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+        {errors.name && (
+          <p className="text-sm text-red-500">{errors.name.message}</p>
+        )}
       </div>
 
       {/* Dates */}
@@ -179,17 +244,22 @@ export default function CreateSemesterTrips({
         <div className="flex-1 space-y-2">
           <Label>Start Date {editingRoute && "(for regenerating trips)"}</Label>
           <Input type="date" {...register("start_date")} />
-          {errors.start_date && <p className="text-sm text-red-500">{errors.start_date.message}</p>}
+          {errors.start_date && (
+            <p className="text-sm text-red-500">{errors.start_date.message}</p>
+          )}
         </div>
         <div className="flex-1 space-y-2">
           <Label>End Date {editingRoute && "(for regenerating trips)"}</Label>
           <Input type="date" {...register("end_date")} />
-          {errors.end_date && <p className="text-sm text-red-500">{errors.end_date.message}</p>}
+          {errors.end_date && (
+            <p className="text-sm text-red-500">{errors.end_date.message}</p>
+          )}
         </div>
       </div>
       {editingRoute && (
         <p className="text-xs text-muted-foreground">
-          Note: Updating the route will regenerate trips for the specified date range. Completed trips will be preserved.
+          Note: Updating the route will regenerate trips for the specified date
+          range. Completed trips will be preserved.
         </p>
       )}
 
@@ -214,12 +284,23 @@ export default function CreateSemesterTrips({
             </Select>
           )}
         />
-        {errors.days_of_week && <p className="text-sm text-red-500">{errors.days_of_week.message}</p>}
+        {errors.days_of_week && (
+          <p className="text-sm text-red-500">{errors.days_of_week.message}</p>
+        )}
         <div className="flex flex-wrap gap-2 mt-2">
           {daysOfWeek.map((day) => (
-            <span key={day} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-lg text-sm flex items-center gap-1">
+            <span
+              key={day}
+              className="bg-blue-100 text-blue-700 px-2 py-1 rounded-lg text-sm flex items-center gap-1"
+            >
               {day}
-              <button type="button" onClick={() => removeDay(day)} className="text-red-500 hover:text-red-700">✕</button>
+              <button
+                type="button"
+                onClick={() => removeDay(day)}
+                className="text-red-500 hover:text-red-700"
+              >
+                ✕
+              </button>
             </span>
           ))}
         </div>
@@ -230,12 +311,16 @@ export default function CreateSemesterTrips({
         <div className="flex-1 space-y-2">
           <Label>Start Time</Label>
           <Input type="time" {...register("start_time")} />
-          {errors.start_time && <p className="text-sm text-red-500">{errors.start_time.message}</p>}
+          {errors.start_time && (
+            <p className="text-sm text-red-500">{errors.start_time.message}</p>
+          )}
         </div>
         <div className="flex-1 space-y-2">
           <Label>End Time</Label>
           <Input type="time" {...register("end_time")} />
-          {errors.end_time && <p className="text-sm text-red-500">{errors.end_time.message}</p>}
+          {errors.end_time && (
+            <p className="text-sm text-red-500">{errors.end_time.message}</p>
+          )}
         </div>
       </div>
 
@@ -254,12 +339,16 @@ export default function CreateSemesterTrips({
                 <SelectItem value="regular">Regular</SelectItem>
                 <SelectItem value="academic">Academic</SelectItem>
                 <SelectItem value="sport">Sport</SelectItem>
-                <SelectItem value="student_life_event">Student Life Event</SelectItem>
+                <SelectItem value="student_life_event">
+                  Student Life Event
+                </SelectItem>
               </SelectContent>
             </Select>
           )}
         />
-        {errors.type && <p className="text-sm text-red-500">{errors.type.message}</p>}
+        {errors.type && (
+          <p className="text-sm text-red-500">{errors.type.message}</p>
+        )}
       </div>
 
       {/* Bus */}
@@ -269,13 +358,16 @@ export default function CreateSemesterTrips({
           control={control}
           name="bus_id"
           render={({ field }) => (
-            <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString() ?? ""}>
+            <Select
+              onValueChange={(v) => field.onChange(Number(v))}
+              value={field.value?.toString() ?? ""}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Bus" />
               </SelectTrigger>
               <SelectContent>
                 {buses.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
+                  <SelectItem key={b.id} value={b.id.toString()}>
                     {b.plate_num || b.name}
                   </SelectItem>
                 ))}
@@ -283,7 +375,9 @@ export default function CreateSemesterTrips({
             </Select>
           )}
         />
-        {errors.bus_id && <p className="text-sm text-red-500">{errors.bus_id.message}</p>}
+        {errors.bus_id && (
+          <p className="text-sm text-red-500">{errors.bus_id.message}</p>
+        )}
       </div>
 
       {/* Driver */}
@@ -293,13 +387,16 @@ export default function CreateSemesterTrips({
           control={control}
           name="driver_id"
           render={({ field }) => (
-            <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString() ?? ""}>
+            <Select
+              onValueChange={(v) => field.onChange(Number(v))}
+              value={field.value?.toString() ?? ""}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Driver" />
               </SelectTrigger>
               <SelectContent>
                 {drivers.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
+                  <SelectItem key={d.id} value={d.id.toString()}>
                     {d.first_name} {d.last_name}
                   </SelectItem>
                 ))}
@@ -307,7 +404,9 @@ export default function CreateSemesterTrips({
             </Select>
           )}
         />
-        {errors.driver_id && <p className="text-sm text-red-500">{errors.driver_id.message}</p>}
+        {errors.driver_id && (
+          <p className="text-sm text-red-500">{errors.driver_id.message}</p>
+        )}
       </div>
 
       {/* Start Terminal */}
@@ -317,7 +416,10 @@ export default function CreateSemesterTrips({
           control={control}
           name="start_terminal_id"
           render={({ field }) => (
-            <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString() ?? ""}>
+            <Select
+              onValueChange={(v) => field.onChange(Number(v))}
+              value={field.value?.toString() ?? ""}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Start Terminal" />
               </SelectTrigger>
@@ -331,7 +433,11 @@ export default function CreateSemesterTrips({
             </Select>
           )}
         />
-        {errors.start_terminal_id && <p className="text-sm text-red-500">{errors.start_terminal_id.message}</p>}
+        {errors.start_terminal_id && (
+          <p className="text-sm text-red-500">
+            {errors.start_terminal_id.message}
+          </p>
+        )}
       </div>
 
       {/* Terminals */}
@@ -353,15 +459,29 @@ export default function CreateSemesterTrips({
             </button>
           ))}
         </div>
-        {errors.terminals && <p className="text-sm text-red-500">{errors.terminals.message}</p>}
+        {errors.terminals && (
+          <p className="text-sm text-red-500">{errors.terminals.message}</p>
+        )}
       </div>
 
       {/* Buttons */}
       <div className="flex gap-2 pt-4">
         <Button type="submit" className="flex-1" disabled={submitting}>
-          {submitting ? (editingRoute ? "Updating..." : "Creating...") : (editingRoute ? "Update Route" : "Create Semester Trips")}
+          {submitting
+            ? editingRoute
+              ? "Updating..."
+              : "Creating..."
+            : editingRoute
+            ? "Update Route"
+            : "Create Semester Trips"}
         </Button>
-        <Button type="button" className="flex-1" variant="outline" onClick={onCancel} disabled={submitting}>
+        <Button
+          type="button"
+          className="flex-1"
+          variant="outline"
+          onClick={onCancel}
+          disabled={submitting}
+        >
           Cancel
         </Button>
       </div>

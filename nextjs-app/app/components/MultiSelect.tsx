@@ -17,16 +17,17 @@ interface MultiSelectProps {
   field: any; // from react-hook-form Controller
 }
 
-export default function MultiSelect({
-  terminals,
-  field,
-}: MultiSelectProps) {
+export default function MultiSelect({ terminals, field }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>(field.value || []);
 
   useEffect(() => {
     field.onChange(selected);
   }, [selected]);
+
+  useEffect(() => {
+    setSelected(field.value || []);
+  }, [field.value]);
 
   const toggleSelection = (value: string) => {
     if (selected.includes(value)) {

@@ -16,3 +16,4 @@ export * from "./switch";
 export * from "./tabs";
 export * from "./command";
 export * from "./popover";
+export * from "./alert"

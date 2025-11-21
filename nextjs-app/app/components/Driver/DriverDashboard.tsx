@@ -23,10 +23,16 @@ import {
   Label,
   Switch,
 } from "../ui";
+import { DriverGPSComponent } from "../GPS";
 
 export function DriverDashboard() {
   const [alertMessage, setAlertMessage] = useState("");
   const [gpsEnabled, setGpsEnabled] = useState(true);
+  const [selectedTripId, setSelectedTripId] = useState<number | undefined>(
+    undefined
+  );
+  // TODO: Get driverId from auth context/session
+  const driverId = 2; // Replace with actual driver ID from auth
 
   const handleSendAlert = () => {
     if (alertMessage.trim()) {
@@ -147,14 +153,22 @@ export function DriverDashboard() {
 
                   {trip.status === "In Progress" ? (
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedTripId(trip.id)}
+                      >
                         <MapPin className="w-4 h-4 mr-2" />
-                        Navigate
+                        Share GPS
                       </Button>
                       <Button size="sm">Complete Trip</Button>
                     </div>
                   ) : (
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedTripId(trip.id)}
+                    >
                       Start Trip
                     </Button>
                   )}
@@ -166,46 +180,16 @@ export function DriverDashboard() {
 
         {/* GPS Tracking & Send Alert */}
         <div className="space-y-6">
-          {/* GPS Tracking Control */}
-          <Card>
-            <CardHeader>
-              <CardTitle>GPS Tracking</CardTitle>
-              <CardDescription>
-                Control real-time location sharing
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                <div className="flex items-center gap-3">
-                  <MapPin
-                    className={`w-6 h-6 ${
-                      gpsEnabled ? "text-green-500" : "text-muted-foreground"
-                    }`}
-                  />
-                  <div>
-                    <p className="font-medium">GPS Status</p>
-                    <p className="text-sm text-muted-foreground">
-                      {gpsEnabled ? "Active" : "Inactive"}
-                    </p>
-                  </div>
-                </div>
-                <Switch checked={gpsEnabled} onCheckedChange={setGpsEnabled} />
-              </div>
-
-              {gpsEnabled && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800">
-                    Your location is being shared with students in real-time
-                  </p>
-                </div>
-              )}
-
-              <Button variant="outline" className="w-full">
-                <MapPin className="w-4 h-4 mr-2" />
-                View on Map
-              </Button>
-            </CardContent>
-          </Card>
+          {/* GPS Tracking Component */}
+          <DriverGPSComponent
+            driverId={driverId}
+            tripId={selectedTripId}
+            onLocationSent={(success) => {
+              if (!success) {
+                setGpsEnabled(false);
+              }
+            }}
+          />
 
           {/* Send Alert */}
           <Card>

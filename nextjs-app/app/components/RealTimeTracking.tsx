@@ -1,13 +1,30 @@
 "use client";
 
 import { MapPin, Bus, Users, Navigation, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Label, Input } from "./ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Label,
+  Input,
+} from "./ui";
 import React, { useState } from "react";
 import { activeShuttles, routes } from "../data/database";
+import { AdminGPSComponent } from "./GPS";
 
 export function RealTimeTracking() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedShuttle, setSelectedShuttle] = useState<any>(null);
+  // TODO: Get adminId from auth context/session - this component is used by admins
+  const adminId = 1; // Replace with actual admin ID from auth
 
   const getOccupancyColor = (occupancy: number) => {
     if (occupancy >= 80) return "text-red-600";
@@ -26,7 +43,9 @@ export function RealTimeTracking() {
       {/* Header */}
       <div>
         <h1>Live Shuttle Tracking</h1>
-        <p className="text-muted-foreground">Real-time location of all active shuttles</p>
+        <p className="text-muted-foreground">
+          Real-time location of all active shuttles
+        </p>
       </div>
 
       {/* Active Shuttles Count */}
@@ -47,7 +66,9 @@ export function RealTimeTracking() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Passengers</p>
+                <p className="text-sm text-muted-foreground">
+                  Total Passengers
+                </p>
                 <h3>84</h3>
               </div>
               <Users className="w-8 h-8 text-primary" />
@@ -79,6 +100,9 @@ export function RealTimeTracking() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Real-time GPS Component */}
+      <AdminGPSComponent />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Map View */}
@@ -178,7 +202,9 @@ export function RealTimeTracking() {
                     </div>
                     <div className="flex-1">
                       <h4 className="text-sm">{shuttle.route}</h4>
-                      <p className="text-xs text-muted-foreground">{shuttle.driver}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {shuttle.driver}
+                      </p>
                     </div>
                   </div>
                   <Badge
@@ -199,8 +225,8 @@ export function RealTimeTracking() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Occupancy</span>
                     <span className={getOccupancyColor(shuttle.occupancy)}>
-                      {getOccupancyLabel(shuttle.occupancy)} ({shuttle.passengers}/
-                      {shuttle.capacity})
+                      {getOccupancyLabel(shuttle.occupancy)} (
+                      {shuttle.passengers}/{shuttle.capacity})
                     </span>
                   </div>
 
@@ -228,9 +254,9 @@ export function RealTimeTracking() {
                   </div>
                 </div>
 
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   className="w-full text-xs"
                   onClick={() => {
                     setSelectedShuttle(shuttle);
@@ -288,7 +314,8 @@ export function RealTimeTracking() {
                     To: <span className="text-foreground">{route.to}</span>
                   </p>
                   <p>
-                    Frequency: <span className="text-foreground">{route.frequency}</span>
+                    Frequency:{" "}
+                    <span className="text-foreground">{route.frequency}</span>
                   </p>
                 </div>
               </div>
@@ -302,7 +329,9 @@ export function RealTimeTracking() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Shuttle Details</DialogTitle>
-            <DialogDescription>Complete information about this shuttle</DialogDescription>
+            <DialogDescription>
+              Complete information about this shuttle
+            </DialogDescription>
           </DialogHeader>
           {selectedShuttle && (
             <div className="space-y-4 py-4">
@@ -316,7 +345,11 @@ export function RealTimeTracking() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Badge variant={selectedShuttle.status === "Moving" ? "default" : "outline"}>
+                <Badge
+                  variant={
+                    selectedShuttle.status === "Moving" ? "default" : "outline"
+                  }
+                >
                   {selectedShuttle.status}
                 </Badge>
               </div>
@@ -331,19 +364,29 @@ export function RealTimeTracking() {
               <div className="space-y-2">
                 <Label>Occupancy</Label>
                 <div className="flex items-center gap-2">
-                  <Input 
-                    value={`${selectedShuttle.passengers}/${selectedShuttle.capacity} (${selectedShuttle.occupancy}%)`} 
-                    disabled 
+                  <Input
+                    value={`${selectedShuttle.passengers}/${selectedShuttle.capacity} (${selectedShuttle.occupancy}%)`}
+                    disabled
                   />
-                  <Badge 
-                    variant={selectedShuttle.occupancy >= 80 ? "destructive" : selectedShuttle.occupancy >= 50 ? "default" : "outline"}
+                  <Badge
+                    variant={
+                      selectedShuttle.occupancy >= 80
+                        ? "destructive"
+                        : selectedShuttle.occupancy >= 50
+                        ? "default"
+                        : "outline"
+                    }
                   >
-                    {selectedShuttle.occupancy >= 80 ? "Full" : selectedShuttle.occupancy >= 50 ? "Half Full" : "Available"}
+                    {selectedShuttle.occupancy >= 80
+                      ? "Full"
+                      : selectedShuttle.occupancy >= 50
+                      ? "Half Full"
+                      : "Available"}
                   </Badge>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 onClick={() => setShowDetailsDialog(false)}
               >

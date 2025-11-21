@@ -201,22 +201,38 @@ export const adminAPI = {
   updateTrip: (
     tripId: number,
     data: Partial<{
+      id: number;
       date: string;
       status: string;
       bus_id: number;
       driver_id: number;
-      start_time: string;
-      end_time: string;
-      name: string;
-      type: string;
-      start_terminal_id: number;
-      terminals: number[];
     }>
   ) =>
     apiCall<{ message: string; trip_id: number }>(`/admin/trip/${tripId}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        id: tripId,
+        ...data,
+      }),
     }),
+  updateSingleTrip: (
+    tripId: number,
+    data: Partial<{
+      id: number;
+      date: string;
+      status: string;
+      bus_id: number;
+      driver_id: number;
+    }>
+  ) =>
+    apiCall<{ message: string }>(`/admin/trip/${tripId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        id: tripId,
+        ...data,
+      }),
+    }),
+    
   deleteTrip: (tripId: number) =>
     apiCall<{ message: string; trip_id: number }>(`/admin/trip/${tripId}`, {
       method: "DELETE",

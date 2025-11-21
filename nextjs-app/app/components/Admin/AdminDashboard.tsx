@@ -40,10 +40,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui";
+import { AdminGPSComponent } from "../GPS";
 
 export function AdminDashboard() {
   const [showCreateTrip, setShowCreateTrip] = useState(false);
   const [showAddDriver, setShowAddDriver] = useState(false);
+  // TODO: Get adminId from auth context/session
+  // const adminId = 1; // Replace with actual admin ID from auth
 
   const stats = adminStats;
 
@@ -195,6 +198,9 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* GPS Tracking Component */}
+      {/* <AdminGPSComponent /> */}
 
       {/* Analytics Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

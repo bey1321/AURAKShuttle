@@ -29,7 +29,7 @@ import {
 } from "../ui";
 import React, { useState } from "react";
 import { notifications, upcomingTrips, nextShuttle } from "../../data/database";
-import GpsDashboard from "../GpsDashboard";
+import { StudentGPSComponent } from "../GPS";
 
 interface StudentDashboardProps {
   onNavigate?: (page: string) => void;
@@ -101,7 +101,8 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
         </Card>
       </div>
 
-      <GpsDashboard role="student" userId={3} tripId={1} />
+      {/* GPS Tracking Component - Replace tripId with actual selected trip */}
+      {/* <StudentGPSComponent tripId={1} userId={3} /> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Next Available Shuttle */}

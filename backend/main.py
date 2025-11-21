@@ -6,6 +6,8 @@ from routes.admin import router as admin
 from routes.student import router as student
 from routes.driver import router as driver
 from routes.lostfound import router as lostfound
+from routes.gps import router as gps
+
 
 from middleware.auth import AuthMiddleware
 
@@ -29,8 +31,20 @@ app.include_router(admin)
 app.include_router(student)
 app.include_router(driver)
 app.include_router(lostfound)
+app.include_router(gps)
 
 
+print("\n" + "="*50)
+print("REGISTERED ROUTES:")
+print("="*50)
+for route in app.routes:
+    if hasattr(route, 'path'):
+        methods = getattr(route, 'methods', None)
+        if methods:
+            print(f"HTTP  : {route.path} [{', '.join(methods)}]")
+        else:
+            print(f"WS    : {route.path}")
+print("="*50 + "\n")
 @app.get('/')
 def greet():
     return 'Welcome to Our Project'
