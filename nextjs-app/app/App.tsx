@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import LoginPage from "./components/LoginPage";
 import SignUpPage from "./components/SignUpPage";
 import {
@@ -32,17 +33,20 @@ export default function App({
   initialLoggedIn = false,
   initialUserRole = null,
   initialUserName = "",
+  onLogout: externalOnLogout,
 }: {
   hideSidebar?: boolean;
   initialLoggedIn?: boolean;
   initialUserRole?: UserRole | null;
   initialUserName?: string;
+  onLogout?: () => void;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(initialLoggedIn);
   const [userRole, setUserRole] = useState<UserRole | null>(initialUserRole);
   const [userName, setUserName] = useState(initialUserName);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [showSignUp, setShowSignUp] = useState(false);
+  const router = useRouter();
 
   const handleLogin = (username: string, role: UserRole) => {
     setUserName(username);
@@ -56,6 +60,16 @@ export default function App({
     setUserName("");
     setUserRole(null);
     setCurrentPage("dashboard");
+    // Notify parent (if provided) so it can show the public Landing component
+    try {
+      if (externalOnLogout) {
+        externalOnLogout();
+      } else {
+        router.push("/");
+      }
+    } catch (e) {
+      console.warn("Logout handler error:", e);
+    }
   };
 
   if (!isLoggedIn) {
@@ -77,12 +91,14 @@ export default function App({
         case "driver":
           return <DriverDashboard />;
         case "admin":
-          return <AdminDashboard />;
+          return <AdminDashboard onNavigate={setCurrentPage} />;
       }
     }
 
     switch (currentPage) {
       // 🔹 Admin
+      case "admin-dashboard":
+        return userRole === "admin" ? <AdminDashboard onNavigate={setCurrentPage} /> : null;
       case "manage-buses":
         return userRole === "admin" ? <AdminCreateBus /> : null;
       case "manage-terminals":
@@ -105,6 +121,8 @@ export default function App({
         return userRole === "driver" ? <DriverLostFoundPage /> : null;
 
       // 🔹 Student
+      case "user-dashboard":
+        return userRole === "student" ? <StudentDashboard onNavigate={setCurrentPage} /> : null;
       case "user-lost-found":
         return userRole === "student" ? <LostFoundPage /> : null;
       case "user-route-registration":

@@ -63,16 +63,22 @@ export default function Landing() {
 
   if (isLoggedIn) {
     return (
-      <App initialLoggedIn={true} initialUserRole={userRole} initialUserName={userName} />
+      <App
+        initialLoggedIn={true}
+        initialUserRole={userRole}
+        initialUserName={userName}
+        onLogout={() => {
+          // Clear landing login state so the Landing view is shown after logout
+          setIsLoggedIn(false);
+          setUserRole(null);
+          setUserName("");
+        }}
+      />
     );
   }
 
   return (
     <div className="relative w-full min-h-screen overflow-y-auto">
-
-      {/* Background image - replace `/hero-bg.jpg` with your provided image in `public/` */}
-      {/* <Image src="/HomepageBackground.avif" alt="hero" fill className="object-cover" priority />
-      <div className="absolute inset-0 bg-black/45" /> */}
 
       {/* Logo top-left */}
       <div className="absolute top-6 left-8 z-30 flex items-center gap-3">

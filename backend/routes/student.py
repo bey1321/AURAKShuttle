@@ -93,7 +93,7 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             }
             response_data.append(trip_data)
         
-        return all_trips #response_data
+        return response_data
 
     except Exception as e:
         print(f"Error getting trips: {e}")

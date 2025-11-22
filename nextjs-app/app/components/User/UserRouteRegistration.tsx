@@ -61,6 +61,13 @@ export default function UserRouteRegistration() {
     fetchData();
   }, []);
 
+  const PageHeader = () => (
+    <div className="mb-6">
+      <h1 className="text-2xl font-semibold">Request a Trip</h1>
+      <p className="text-sm text-muted-foreground">Browse available routes and request registration for a trip.</p>
+    </div>
+  );
+
   const handleRegister = async (route_id: number) => {
     setSelectedRoute(route_id);
     try {
@@ -78,16 +85,26 @@ export default function UserRouteRegistration() {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div>
+        <PageHeader />
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
 
   if (!routes.length)
-    return <div className="text-center text-muted-foreground py-20">No routes available</div>;
+    return (
+      <div>
+        <PageHeader />
+        <div className="text-center text-muted-foreground py-20">No routes available</div>
+      </div>
+    );
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div>
+      <PageHeader />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {routes.map((route) => {
         const registration = registrations.find((r) => r.route_id === route.id);
         const isRequested = registration?.status === "requested";
@@ -156,6 +173,7 @@ export default function UserRouteRegistration() {
           </Card>
         );
       })}
+    </div>
     </div>
   );
 }

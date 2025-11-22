@@ -1,3 +1,4 @@
+// Export AdminDashboard explicitly to avoid circular re-export resolution issues
 export * from "./Admin/AdminDashboard";
 export * from "./Admin/AdminLostFoundPage";
 export * from "./Admin/ManageTrips/AdminManageTrips";

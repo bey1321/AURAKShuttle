@@ -136,7 +136,8 @@ export const adminAPI = {
     last_name: string;
     role: string;
   }) =>
-    apiCall<{ message: string; user_id: number }>("/admin/create/user", {
+    // Backend exposes `/admin/create_user` (underscore) so call that route
+    apiCall<{ message: string; user_id: number }>("/admin/create_user", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -157,11 +158,11 @@ export const adminAPI = {
         body: JSON.stringify(data),
       }
     ),
+  // Backend DELETE endpoint is `/admin/user/{user_id}` (no 'delete' segment)
   deleteUser: (userId: number) =>
-    apiCall<{ message: string; user_id: number }>(
-      `/admin/delete/user/${userId}`,
-      { method: "DELETE" }
-    ),
+    apiCall<{ message: string; user_id: number }>(`/admin/user/${userId}`, {
+      method: "DELETE",
+    }),
 
   // Terminals
   getTerminals: () => apiCall<any[]>("/admin/terminals"),

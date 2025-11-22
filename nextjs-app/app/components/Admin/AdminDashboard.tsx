@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { adminAPI } from "../../lib/api";
 import { trips, drivers, adminStats } from "../../data/database";
 import {
   Bus,
@@ -42,11 +43,68 @@ import {
 } from "../ui";
 import { AdminGPSComponent } from "../GPS";
 
-export function AdminDashboard() {
+export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [showCreateTrip, setShowCreateTrip] = useState(false);
   const [showAddDriver, setShowAddDriver] = useState(false);
   // TODO: Get adminId from auth context/session
   // const adminId = 1; // Replace with actual admin ID from auth
+
+  const [buses, setBuses] = useState<any[]>([]);
+  const [busLoading, setBusLoading] = useState(true);
+
+  const loadBuses = async () => {
+    try {
+      setBusLoading(true);
+      const data = await adminAPI.getBuses();
+
+      const mapped = data.map((b: any) => ({
+        id: b.id,
+        plate: b.plate_num,
+        model: b.model,
+        manufacturer: b.manufacturer,
+        seats: b.no_seats,
+        status: b.status,
+      }));
+
+      setBuses(mapped);
+    } catch (err: any) {
+      console.error("Error loading buses:", err);
+      alert(err?.message || "Failed to load buses");
+    } finally {
+      setBusLoading(false);
+    }
+  };
+
+  const [routes, setRoutes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadSemesterTrips = async () => {
+    try {
+      setLoading(true);
+      const routesData = await adminAPI.getRoutes();
+      setRoutes(Array.isArray(routesData) ? routesData : []);
+    } catch (e: any) {
+      console.error("Error loading semester routes:", e);
+      alert(e?.message || "Failed to load semester routes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSemesterTrips();
+    loadBuses();
+  }, []);
+
+  const renderTerminals = (terminalsArray: any[]) => {
+    if (!Array.isArray(terminalsArray)) return "—";
+    return (
+      terminalsArray
+        .map((t) => t.terminal?.terminalName || "—")
+        .filter((x) => x !== "—")
+        .join(", ") || "—"
+    );
+  };
 
   const stats = adminStats;
 
@@ -60,96 +118,10 @@ export function AdminDashboard() {
             Manage shuttle operations and users
           </p>
         </div>
-        <Dialog open={showCreateTrip} onOpenChange={setShowCreateTrip}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Trip
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Trip</DialogTitle>
-              <DialogDescription>
-                Add a new shuttle trip to the schedule
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Route</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select route" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="route1">
-                      Main Campus → Khatt Terminal
-                    </SelectItem>
-                    <SelectItem value="route2">
-                      Khatt Terminal → Main Campus
-                    </SelectItem>
-                    <SelectItem value="route3">
-                      Main Campus → RAK Mall
-                    </SelectItem>
-                    <SelectItem value="route4">
-                      RAK Mall → Main Campus
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Assign Driver</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select driver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="driver1">Ahmed Hassan</SelectItem>
-                    <SelectItem value="driver2">Mohammed Ali</SelectItem>
-                    <SelectItem value="driver3">Sara Ahmed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Departure Time</Label>
-                  <Input type="time" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input type="date" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Capacity</Label>
-                <Input type="number" placeholder="40" />
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => setShowCreateTrip(false)}
-                >
-                  Create Trip
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowCreateTrip(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="flex gap-4 [&>*]:flex-1">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -190,17 +162,26 @@ export function AdminDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Avg Occupancy</p>
-                <h3>{stats.avgOccupancy}%</h3>
+                <p className="text-sm text-muted-foreground">Registration reguests</p>
+                <h3>{stats.avgOccupancy}</h3>
+              </div>
+              <TrendingUp className="w-8 h-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Lost Item Claims</p>
+                <h3>{stats.avgOccupancy}</h3>
               </div>
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* GPS Tracking Component */}
-      {/* <AdminGPSComponent /> */}
 
       {/* Analytics Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -308,192 +289,120 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Trip Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Manage Trips</CardTitle>
-              <CardDescription>
-                View, edit, and delete shuttle trips
-              </CardDescription>
-            </div>
-            <Button variant="outline">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              View Report
+      <Card className="mt-4">
+      <CardHeader>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Semester-Wide Routes</CardTitle>
+            <CardDescription>Recurring weekly semester trips</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => onNavigate?.("manage-trips")}>Manage Routes</Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : routes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No semester trips found.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Days of Week</TableHead>
+                <TableHead>Start Terminal</TableHead>
+                <TableHead>Stops</TableHead>
+                <TableHead>Start Time</TableHead>
+                <TableHead>End Time</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {routes.map((route) => (
+                <TableRow key={route.id}>
+                  <TableCell>{route.id}</TableCell>
+                  <TableCell>{route.name || "—"}</TableCell>
+                  <TableCell>{route.type || "—"}</TableCell>
+                  <TableCell>
+                    {Array.isArray(route.days_of_week)
+                      ? route.days_of_week.join(", ")
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {route.start_terminal?.terminalName || "—"}
+                  </TableCell>
+                  <TableCell>{renderTerminals(route.terminals)}</TableCell>
+                  <TableCell>{route.start_time || "—"}</TableCell>
+                  <TableCell>{route.end_time || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+
+      {/* buses Management */}
+      <Card className="mt-4">
+      <CardHeader>
+        <div className="flex items-start justify-between w-full">
+          <div>
+            <CardTitle>Buses</CardTitle>
+            <CardDescription>List of all registered shuttle buses</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => onNavigate?.("manage-buses")}>
+              Manage Buses
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {busLoading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : buses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No buses found.</p>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Route</TableHead>
-                <TableHead>Driver</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>ID</TableHead>
+                <TableHead>Plate Number</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead>Manufacturer</TableHead>
+                <TableHead>Seats</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Passengers</TableHead>
-                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {trips.map((trip) => (
-                <TableRow key={trip.id}>
-                  <TableCell>{trip.route}</TableCell>
-                  <TableCell>{trip.driver}</TableCell>
-                  <TableCell>{trip.time}</TableCell>
+              {buses.map((bus) => (
+                <TableRow key={bus.id}>
+                  <TableCell>{bus.id}</TableCell>
+                  <TableCell>{bus.plate}</TableCell>
+                  <TableCell>{bus.model}</TableCell>
+                  <TableCell>{bus.manufacturer}</TableCell>
+                  <TableCell>{bus.seats}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={trip.status === "Active" ? "default" : "outline"}
-                    >
-                      {trip.status}
+                    <Badge variant={bus.status === "Active" ? "default" : "outline"}>
+                      {bus.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {trip.passengers}/{trip.capacity}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost">
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      {/* Driver Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Manage Drivers</CardTitle>
-              <CardDescription>
-                Assign and monitor driver activities
-              </CardDescription>
-            </div>
-            <Dialog open={showAddDriver} onOpenChange={setShowAddDriver}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Driver
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Add New Driver</DialogTitle>
-                  <DialogDescription>
-                    Add a new driver to the system
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Full Name</Label>
-                    <Input placeholder="Enter driver's full name" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" placeholder="driver@aurak.ac.ae" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Phone Number</Label>
-                    <Input type="tel" placeholder="+971 XX XXX XXXX" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>License Number</Label>
-                    <Input placeholder="Enter license number" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Assigned Vehicle</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select vehicle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="bus1">Bus 001</SelectItem>
-                        <SelectItem value="bus2">Bus 002</SelectItem>
-                        <SelectItem value="bus3">Bus 003</SelectItem>
-                        <SelectItem value="bus4">Bus 004</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1"
-                      onClick={() => {
-                        // Driver added successfully!
-                        setShowAddDriver(false);
-                      }}
-                    >
-                      Add Driver
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setShowAddDriver(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Today's Trips</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {drivers.map((driver) => (
-                <TableRow key={driver.id}>
-                  <TableCell>{driver.name}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        driver.status === "Active" ? "default" : "outline"
-                      }
-                    >
-                      {driver.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{driver.trips}</TableCell>
-                  <TableCell>⭐ {driver.rating}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        View Profile
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Assign Trip
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        )}
+      </CardContent>
+    </Card>
     </div>
   );
 }

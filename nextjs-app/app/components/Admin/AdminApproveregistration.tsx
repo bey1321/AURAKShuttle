@@ -58,6 +58,13 @@ const AdminApproveRegistrations = () => {
     fetchRegistrations();
   }, []);
 
+  const PageHeader = () => (
+    <div className="mb-4">
+      <h1 className="text-2xl font-semibold">Approve Registrations</h1>
+      <p className="text-sm text-muted-foreground">Review and approve student registration requests for semester routes.</p>
+    </div>
+  );
+
   const handleApprove = async (id: number) => {
     setApprovingId(id);
     try {
@@ -74,20 +81,26 @@ const AdminApproveRegistrations = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div>
+        <PageHeader />
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
 
   if (registrations.length === 0)
     return (
-      <Card className="p-6 text-center text-muted-foreground">
-        No pending registrations 🎉
-      </Card>
+      <div>
+        <PageHeader />
+        <Card className="p-6 text-center text-muted-foreground">No pending registrations 🎉</Card>
+      </div>
     );
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div>
+      <PageHeader />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {registrations.map((reg) => (
         <Card
           key={reg.id}
@@ -134,6 +147,7 @@ const AdminApproveRegistrations = () => {
           </CardContent>
         </Card>
       ))}
+    </div>
     </div>
   );
 };

@@ -34,7 +34,7 @@ interface Props {
 
 export default function PreviousFeedbacks({ feedbackList }: Props) {
   return (
-    <Card>
+    <Card className="w-full max-w-xl mx-auto">
       <CardHeader>
         <CardTitle>Your Previous Reviews</CardTitle>
         <CardDescription>Feedback you've submitted</CardDescription>

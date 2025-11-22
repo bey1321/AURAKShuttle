@@ -82,8 +82,15 @@ export default function FeedbackPage() {
       ) : (
         <>
           <FeedbackOverview feedbackList={feedbackList} />
-          <NewFeedbackForm onSubmit={handleNewFeedback} />
-          <PreviousFeedbacks feedbackList={feedbackList} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div>
+              <NewFeedbackForm onSubmit={handleNewFeedback} />
+            </div>
+            <div>
+              <PreviousFeedbacks feedbackList={feedbackList} />
+            </div>
+          </div>
         </>
       )}
     </div>

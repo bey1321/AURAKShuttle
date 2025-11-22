@@ -56,7 +56,9 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
     const fetchTrips = async () => {
       try {
         setLoading(true);
-        const trips = await tripAPI.getMyTrips(); // ✅ updated
+        // Use the user's trips endpoint per request
+        // This will fetch the user's trips (past & reserved) for selection
+        const trips = await tripAPI.getMyTrips();
         // Optional: only include past trips if needed
         const today = new Date();
         const filteredTrips = trips.filter(
@@ -65,7 +67,8 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
         setRecentTrips(filteredTrips);
       } catch (error) {
         console.error("Error fetching trips:", error);
-        alert("Failed to load trips for feedback.");
+        const msg = (error as any)?.message || String(error);
+        alert("Failed to load trips for feedback: " + msg);
       } finally {
         setLoading(false);
       }
@@ -103,6 +106,8 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
   const handleSubmit = async () => {
     if (
       !selectedTrip ||
+      selectedTrip === "loading" ||
+      selectedTrip === "none" ||
       !feedbackText ||
       cleanlinessRating === 0 ||
       driverRating === 0 ||
@@ -152,14 +157,16 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
       setFeedbackText("");
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      alert("Failed to submit feedback.");
+      // apiCall throws Error with message containing status and detail when the response is not ok
+      const errMsg = (error as any)?.message || JSON.stringify(error);
+      alert("Failed to submit feedback: " + errMsg);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Card>
+    <Card className="w-full max-w-xl mx-auto">
       <CardHeader>
         <CardTitle>Submit New Feedback</CardTitle>
         <CardDescription>Rate your recent shuttle experience</CardDescription>
