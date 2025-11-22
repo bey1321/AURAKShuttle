@@ -28,6 +28,17 @@ export function StudentGPSComponent({
   const [location, setLocation] = useState<LocationData | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
+  // const [authToken, setAuthToken] = useState<string | null>(null);
+
+  // useEffect(() => {
+  //   if (typeof window !== "undefined") {
+  //     const token = localStorage.getItem("access_token");
+  //     setAuthToken(token);
+  //   }
+  // }, []);
+
+
+
   const { isConnected, connectionStatus, lastError, sendMessage } =
     useGPSWebSocket({
       role: "student",
@@ -36,18 +47,19 @@ export function StudentGPSComponent({
       enabled: !!tripId,
       onMessage: (message) => {
         if (
-          message.type === "location_update" ||
-          message.type === "initial_location"
-        ) {
-          const locationData = Array.isArray(message.data)
-            ? message.data[0]
-            : message.data;
-          if (locationData) {
-            setLocation(locationData);
-            setLastUpdate(new Date());
-            onLocationUpdate?.(locationData);
-          }
-        }
+  message.type === "location_update" ||
+  message.type === "initial_location" ||
+  message.type === "bus_location"
+) {
+  const locationData = Array.isArray(message.data)
+    ? message.data[0]
+    : message.data;
+
+  setLocation(locationData);
+  setLastUpdate(new Date());
+  onLocationUpdate?.(locationData);
+}
+
       },
       onError: (error) => {
         console.error("GPS WebSocket error:", error);
@@ -57,7 +69,7 @@ export function StudentGPSComponent({
   const formatTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleTimeString();
+      return date.toLocaleTimeString("en-US");
     } catch {
       return "Unknown";
     }

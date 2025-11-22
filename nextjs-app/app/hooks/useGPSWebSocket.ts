@@ -190,14 +190,28 @@ export function useGPSWebSocket({
       };
 
       ws.onerror = (error) => {
-        console.error("[GPS WebSocket] Connection error:", error);
-        setConnectionStatus("error");
-        setLastError("WebSocket connection error");
-        onError?.("WebSocket connection error");
+          // Log the full error event for debugging (some browsers provide limited info)
+          try {
+            console.error("[GPS WebSocket] Connection error event:", error);
+            // if the event has an error property, log it too
+            // @ts-ignore
+            if (error && (error as any).error) console.error("Underlying error:", (error as any).error);
+          } catch (e) {
+            console.error("[GPS WebSocket] Failed to log error event:", e);
+          }
+
+          setConnectionStatus("error");
+          setLastError("WebSocket connection error");
+          onError?.("WebSocket connection error");
       };
 
       ws.onclose = (event) => {
-        console.log(`[GPS WebSocket] Connection closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+          // Log the full close event object to capture codes/reasons and abnormal closures
+          try {
+            console.log("[GPS WebSocket] onclose event:", event);
+          } catch (e) {
+            console.log(`[GPS WebSocket] Connection closed. Code: ${event.code}, Reason: ${event.reason || "No reason provided"}`);
+          }
         setIsConnected(false);
         setConnectionStatus("disconnected");
         onDisconnect?.();

@@ -18,6 +18,7 @@ import {
 } from "../ui";
 import ConfirmDeleteDialog from "../ConfirmDeleteDialog";
 import { lostFoundAPI } from "../../lib/api";
+import { addNotification } from "../../lib/localNotifications";
 
 // Interfaces
 interface Claim {
@@ -129,6 +130,17 @@ export function AdminLostFoundPage() {
   const handleApproveClaim = async (claimId: number) => {
     try {
       await lostFoundAPI.approveClaim(claimId);
+      // Add a frontend-only notification so the student (or local user) sees the approval
+      try {
+        // try to find the claim to get claimer info
+        const found = claimsList.find((c) => c.id === claimId);
+        const claimerName = found ? `${found.claimer.first_name} ${found.claimer.last_name}` : undefined;
+        addNotification({
+          type: "success",
+          message: `Claim approved for ${currentItemForClaims?.obj_name ?? "item"}`,
+          data: { claimId, itemId: currentItemForClaims?.id, claimer: found?.claimer },
+        });
+      } catch {}
       alert("Claim approved successfully!");
       fetchItems();
       if (currentItemForClaims) handleSeeClaims(currentItemForClaims);

@@ -38,7 +38,7 @@ export function Layout({
     student: [
       { icon: Home, label: "User Dashboard", id: "user-dashboard" },
       { icon: MessageSquare, label: "Register for a Trip", id: "user-route-registration" },
-      { icon: MapPin, label: "Track Shuttle", id: "tracking" },
+      { icon: MapPin, label: "Track Shuttle", id: "student-live-tracking" },
       { icon: Calendar, label: "Schedule", id: "schedule" },
       { icon: Package, label: "Lost & Found", id: "user-lost-found" },
       { icon: MessageSquare, label: "Feedback", id: "feedback" },
@@ -47,7 +47,7 @@ export function Layout({
       { icon: Home, label: "Driver Dashboard", id: "driver-dashboard" },
       { icon: Bus, label: "My Trips", id: "my-trips" },
       { icon: Package, label: "Lost and Found", id: "driver-lost-found" },
-      { icon: MapPin, label: "Live Tracking", id: "tracking" },
+      { icon: MapPin, label: "Live Tracking", id: "driver-live-tracking" },
       { icon: Bell, label: "Send Alert", id: "send-alert" },
     ],
     admin: [
@@ -58,7 +58,7 @@ export function Layout({
       { icon: MessageSquare, label: "Approve Registrations", id: "admin-approve-registration" },
       { icon: Users, label: "Manage Users", id: "manage-users" },
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
-      { icon: MapPin, label: "Live Tracking", id: "tracking" },
+      { icon: MapPin, label: "Live Tracking", id: "admin-live-tracking" },
       { icon: Package, label: "Admin Lost & Found", id: "admin-lost-found" },
     ],
   };

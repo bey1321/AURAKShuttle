@@ -27,9 +27,9 @@ import {
   Label,
   Input,
 } from "../ui";
-import React, { useState } from "react";
-import { notifications, upcomingTrips, nextShuttle } from "../../data/database";
-import { StudentGPSComponent } from "../GPS";
+import { upcomingTrips, nextShuttle } from "../../data/database";
+import { getNotifications, LocalNotification } from "../../lib/localNotifications";
+import React, { useState, useEffect, useRef } from "react";
 
 interface StudentDashboardProps {
   onNavigate?: (page: string) => void;
@@ -39,6 +39,156 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
   const [showReserveDialog, setShowReserveDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const geoWatchRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Load Leaflet CSS and JS via CDN when component mounts
+    const leafletCssId = "leaflet-css";
+    const leafletJsId = "leaflet-js";
+
+    function ensureCss() {
+      if (!document.getElementById(leafletCssId)) {
+        const link = document.createElement("link");
+        link.id = leafletCssId;
+        link.rel = "stylesheet";
+        // load local copy from public/
+        link.href = "/leaflet.css";
+        document.head.appendChild(link);
+      }
+    }
+
+    function ensureScript(): Promise<void> {
+      return new Promise((resolve, reject) => {
+        if ((window as any).L) return resolve();
+        if (document.getElementById(leafletJsId)) {
+          // wait a bit
+          const check = setInterval(() => {
+            if ((window as any).L) {
+              clearInterval(check);
+              resolve();
+            }
+          }, 50);
+          setTimeout(() => {
+            clearInterval(check);
+            reject(new Error("Leaflet script load timeout"));
+          }, 5000);
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.id = leafletJsId;
+        // load local copy from public/
+        script.src = "/leaflet.js";
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load local Leaflet script"));
+        document.body.appendChild(script);
+      });
+    }
+
+    let intervalId: number | null = null;
+
+    ensureCss();
+    ensureScript()
+      .then(() => {
+        try {
+          const L = (window as any).L;
+          if (!L) return;
+          // initialize map if not already
+          if (!mapRef.current) {
+            const map = L.map("leaflet-demo-map", { zoomControl: false }).setView([25.2, 55.3], 12);
+            // Use CARTO Voyager (colorful) which commonly shows labels in English
+            L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+              attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+              subdomains: "abcd",
+              maxZoom: 19,
+            }).addTo(map);
+            mapRef.current = map;
+
+            // initial marker (will be updated by geolocation)
+            const demoIcon = L.divIcon({
+              className: "custom-leaflet-marker",
+              html: '<span style="display:block;width:16px;height:16px;background:#1976d2;border-radius:50%;box-shadow:0 0 6px rgba(25,118,210,0.6);border:2px solid white"></span>',
+              iconSize: [16, 16],
+              iconAnchor: [8, 8],
+            });
+            const marker = L.marker([25.2, 55.3], { icon: demoIcon }).addTo(map);
+            markerRef.current = marker;
+
+            // start geolocation watch immediately to show user's real-time location
+            if (navigator.geolocation) {
+              const success = (pos: GeolocationPosition) => {
+                const { latitude, longitude } = pos.coords;
+                markerRef.current.setLatLng([latitude, longitude]);
+                mapRef.current.panTo([latitude, longitude]);
+                try {
+                  const ts = new Date().toLocaleString("en-US");
+                  markerRef.current.bindPopup(`You are here — ${ts}`).openPopup();
+                } catch {}
+              };
+
+              const error = (err: GeolocationPositionError) => {
+                console.warn("Geolocation error:", err);
+              };
+
+              const id = navigator.geolocation.watchPosition(success, error, {
+                enableHighAccuracy: true,
+                maximumAge: 10000,
+                timeout: 10000,
+              });
+              geoWatchRef.current = id as unknown as number;
+            }
+          }
+        } catch (err) {
+          // ignore initialization errors
+          // console.error("Leaflet init error", err);
+        }
+      })
+      .catch(() => {
+        // ignore load errors for demo
+      });
+
+    return () => {
+      if (geoWatchRef.current && navigator.geolocation) {
+        navigator.geolocation.clearWatch(geoWatchRef.current);
+        geoWatchRef.current = null;
+      }
+      try {
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+          markerRef.current = null;
+        }
+      } catch {}
+    };
+  }, []);
+  // geolocation starts automatically on mount and is cleaned up on unmount
+  const [localNotifs, setLocalNotifs] = React.useState<LocalNotification[]>([]);
+  const [activeNotif, setActiveNotif] = React.useState<LocalNotification | null>(null);
+  const [notifDialogOpen, setNotifDialogOpen] = React.useState(false);
+
+  useEffect(() => {
+    // load notifications from localStorage (frontend-only)
+    try {
+      setLocalNotifs(getNotifications());
+    } catch {}
+
+    // listen for updates (other tabs/components)
+    const onUpdate = (e: any) => {
+      try {
+        setLocalNotifs(getNotifications());
+      } catch {}
+    };
+    window.addEventListener("aurak:notifications:updated", onUpdate);
+    window.addEventListener("aurak:notifications:cleared", onUpdate);
+    return () => {
+      window.removeEventListener("aurak:notifications:updated", onUpdate);
+      window.removeEventListener("aurak:notifications:cleared", onUpdate);
+    };
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -101,8 +251,12 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
         </Card>
       </div>
 
-      {/* GPS Tracking Component - Replace tripId with actual selected trip */}
-      {/* <StudentGPSComponent tripId={1} userId={3} /> */}
+
+      {/* Mini Map Placeholder - Leaflet demo */}
+              <div className="h-48 bg-muted rounded-lg overflow-hidden" aria-hidden>
+                <div id="leaflet-demo-map" className="w-full h-full" />
+                {/* geolocation watch starts automatically; no toggle needed */}
+              </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Next Available Shuttle */}
@@ -196,13 +350,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
               </Dialog>
             </div>
 
-            {/* Mini Map Placeholder */}
-            <div className="h-48 bg-muted rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">Live Map View</p>
-              </div>
-            </div>
+    
           </CardContent>
         </Card>
 
@@ -213,36 +361,79 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
             <CardDescription>Recent updates and alerts</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {notifications.map((notif) => (
-              <div
-                key={notif.id}
-                className="p-3 border border-border rounded-lg space-y-2"
-              >
+            {localNotifs.length ? (
+              localNotifs.map((notif: LocalNotification) => (
+                <div
+                  key={notif.id}
+                  className="p-3 border border-border rounded-lg space-y-2 cursor-pointer"
+                  onClick={() => {
+                    setActiveNotif(notif);
+                    setNotifDialogOpen(true);
+                  }}
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertCircle
+                      className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                        notif.type === "info"
+                          ? "text-blue-500"
+                          : notif.type === "success"
+                          ? "text-green-500"
+                          : notif.type === "warning"
+                          ? "text-yellow-500"
+                          : "text-red-500"
+                      }`}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm">{notif.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {notif.time}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              // fallback to example static content
+              <div className="p-3 border border-border rounded-lg space-y-2">
                 <div className="flex items-start gap-2">
-                  <AlertCircle
-                    className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                      notif.type === "info"
-                        ? "text-blue-500"
-                        : notif.type === "success"
-                        ? "text-green-500"
-                        : "text-yellow-500"
-                    }`}
-                  />
+                  <AlertCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500`} />
                   <div className="flex-1">
-                    <p className="text-sm">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {notif.time}
-                    </p>
+                    <p className="text-sm">No notifications yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">You're all caught up</p>
                   </div>
                 </div>
               </div>
-            ))}
+            )}
 
             <Button variant="outline" className="w-full">
               View All Notifications
             </Button>
           </CardContent>
         </Card>
+
+        {/* Notification details dialog */}
+        <Dialog open={notifDialogOpen} onOpenChange={setNotifDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Notification</DialogTitle>
+              <DialogDescription>
+                Details about this notification
+              </DialogDescription>
+            </DialogHeader>
+            {activeNotif && (
+              <div className="py-4">
+                <p className="font-medium mb-2">{activeNotif.message}</p>
+                <p className="text-xs text-muted-foreground">{activeNotif.time}</p>
+                {activeNotif.data && (
+                  <pre className="mt-3 text-xs bg-muted p-2 rounded">{JSON.stringify(activeNotif.data, null, 2)}</pre>
+                )}
+                <div className="mt-4">
+                  <Button onClick={() => setNotifDialogOpen(false)}>Close</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Upcoming Trips */}

@@ -17,6 +17,7 @@ import {
   DialogDescription,
 } from "../../ui";
 import { lostFoundAPI } from "../../../lib/api";
+import { addNotification } from "../../../lib/localNotifications";
 
 // ✅ Backend-aligned interface
 export interface LostFoundItem {
@@ -78,6 +79,10 @@ export function LostFoundPage() {
   const handleApproveClaim = async (item: LostFoundItem) => {
     try {
       await lostFoundAPI.claimItem(item.id);
+      // Add a frontend-only notification so the student sees feedback in their dashboard
+      try {
+        addNotification({ type: "info", message: `Claim submitted for ${item.obj_name}`, data: { itemId: item.id } });
+      } catch {}
       alert("✅ Claim made successfully!");
       fetchItems();
     } catch (err: any) {

@@ -15,16 +15,49 @@ import {
   DialogTitle,
   Label,
   Input,
-} from "./ui";
-import React, { useState } from "react";
-import { activeShuttles, routes } from "../data/database";
-import { AdminGPSComponent } from "./GPS";
+} from "../ui";
+import React, { useState, useEffect } from "react";
+import { activeShuttles } from "../../data/database";
+import { StudentGPSComponent } from "../GPS";
+import { tripAPI } from "../../lib/api";
 
-export function RealTimeTracking() {
+export function UserLiveTracking() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedShuttle, setSelectedShuttle] = useState<any>(null);
+  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
+  const [myTrips, setMyTrips] = useState<any[]>([]);
+  const [tripsLoading, setTripsLoading] = useState<boolean>(true);
+  const [tripsError, setTripsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchTrips = async () => {
+      try {
+        setTripsLoading(true);
+        const trips = await tripAPI.getMyTrips();
+        if (!mounted) return;
+        setMyTrips(trips || []);
+        if ((trips || []).length > 0) {
+          setSelectedTripId((prev) => prev ?? trips[0].id);
+        } else {
+          // fallback to activeShuttles first id if available
+          setSelectedTripId((prev) => prev ?? (activeShuttles.length > 0 ? activeShuttles[0].id : null));
+        }
+      } catch (e: any) {
+        console.error("Error fetching user trips for live tracking:", e);
+        setTripsError((e && e.message) || String(e));
+        setSelectedTripId((prev) => prev ?? (activeShuttles.length > 0 ? activeShuttles[0].id : null));
+      } finally {
+        if (mounted) setTripsLoading(false);
+      }
+    };
+    fetchTrips();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   // TODO: Get adminId from auth context/session - this component is used by admins
-  const adminId = 1; // Replace with actual admin ID from auth
+  const StudentID = 1; // Replace with actual admin ID from auth
 
   const getOccupancyColor = (occupancy: number) => {
     if (occupancy >= 80) return "text-red-600";
@@ -102,13 +135,40 @@ export function RealTimeTracking() {
       </div>
 
       {/* Real-time GPS Component */}
-      <AdminGPSComponent />
+      {/* Student GPS Component (real student tracking) */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Map View */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Live Map</CardTitle>
+            <div className="ml-4">
+              <label className="text-sm text-muted-foreground mr-2">Track Shuttle:</label>
+              <select
+                value={selectedTripId ?? ""}
+                onChange={(e) => setSelectedTripId(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm"
+              >
+                {tripsLoading ? (
+                  <option value="" disabled>
+                    Loading trips...
+                  </option>
+                ) : myTrips.length > 0 ? (
+                  myTrips.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.route_name || t.route || t.name || `Trip ${t.id}`} ({t.date || "N/A"})
+                    </option>
+                  ))
+                ) : (
+                  // fallback to activeShuttles mock data
+                  activeShuttles.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.route} ({s.location})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-[600px] bg-muted rounded-lg border border-border relative overflow-hidden">
@@ -167,6 +227,25 @@ export function RealTimeTracking() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Student GPS Panel */}
+        <div className="lg:col-span-1">
+          {selectedTripId ? (
+            <StudentGPSComponent
+              tripId={selectedTripId}
+              onLocationUpdate={(loc) => {
+                // Optionally update UI or show toast when location updates
+                console.log("Student GPS location update:", loc);
+              }}
+            />
+          ) : (
+            <Card>
+              <CardContent>
+                <p className="text-muted-foreground">No shuttle selected for live tracking.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         {/* Shuttle List */}
         <Card>

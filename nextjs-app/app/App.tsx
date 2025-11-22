@@ -10,8 +10,6 @@ import {
   DriverDashboard,
   AdminDashboard,
   LostFoundPage,
-  RealTimeTracking,
-  // ScheduleSearch,
   DriverTrips,
   AdminManageTrips,
   AdminManageUsers,
@@ -25,6 +23,9 @@ import DriverLostFoundPage from "./components/Driver/LostAndFoundPage/DriverLost
 import ManageTerminal from "./components/Admin/ManageTrips/ManageTerminal";
 import UserRouteRegistration from "./components/User/UserRouteRegistration";
 import AdminApproveRegistrations from "./components/Admin/AdminApproveregistration";
+import { DriverLiveTracking } from "./components/Driver/DriverLiveTracking";
+import { UserLiveTracking } from "./components/User/UserLiveTracking";
+import { AdminLiveTracking } from "./components/Admin/AdminLiveTracking";
 
 type UserRole = "student" | "driver" | "admin";
 
@@ -113,12 +114,16 @@ export default function App({
         return userRole === "admin" ? <AdminLostFoundPage /> : null;
       case "admin-approve-registration":
         return userRole === "admin" ? <AdminApproveRegistrations /> : null;
+      case "admin-live-tracking":
+        return userRole === "admin" ? <AdminLiveTracking /> : null;
 
       // 🔹 Driver
       case "my-trips":
         return userRole === "driver" ? <DriverTrips /> : null;
       case "driver-lost-found":
         return userRole === "driver" ? <DriverLostFoundPage /> : null;
+      case "driver-live-tracking":
+        return userRole === "driver" ? <DriverLiveTracking /> : null;
 
       // 🔹 Student
       case "user-dashboard":
@@ -127,15 +132,12 @@ export default function App({
         return userRole === "student" ? <LostFoundPage /> : null;
       case "user-route-registration":
         return userRole === "student" ? <UserRouteRegistration /> : null;
-        case "schedule":
-          return <UserScheduleSearch />; 
-
-      // 🔹 Shared
-      case "tracking":
-        return <RealTimeTracking />;
+      case "schedule":
+          return userRole === "student" ?  <UserScheduleSearch />: null;
+      case "student-live-tracking":
+          return userRole === "student" ?  <UserLiveTracking />: null;
       case "feedback":
-        return <FeedbackPage />;
-
+        return userRole === "student" ?  <FeedbackPage /> : null;
       default:
         return null;
     }

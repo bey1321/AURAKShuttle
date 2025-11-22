@@ -9,7 +9,6 @@ export * from "./Driver/DriverTrips";
 export * from "./User/FeedBack/FeedbackPage";
 export * from "./Layout";
 export { LostFoundPage } from "./User/LostAndFound/LostFoundPage";
-export * from "./RealTimeTracking";
 export * from "./User/UserScheduleSearch";
 export * from "./User/StudentDashboard";
 export * from "./GPS";
