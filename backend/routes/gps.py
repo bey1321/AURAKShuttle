@@ -147,7 +147,7 @@ async def student_websocket(
     WebSocket endpoint for students to receive real-time location updates.
     Token is read from cookies automatically sent by the browser.
     """
-    
+    print('student websocket requsted')
     await websocket.accept()
 
     # ---- AUTH: READ TOKEN FROM COOKIES OR QUERY PARAMETERS ----
@@ -209,11 +209,11 @@ async def student_websocket(
         )
     )
     registration = registration_result.scalar_one_or_none()
-    if not registration:
+    """if not registration:
         print(f"❌ [Student WS] Student {student_id} not registered for route {trip.route_id}")
         await websocket.send_json({'type': 'error', 'message': f'Student not registered for this route (route_id: {trip.route_id})'})
         await websocket.close()
-        return
+        return"""
     
     print(f"✅ [Student WS] Student {student_id} is registered for route {trip.route_id}")
 
@@ -231,11 +231,26 @@ async def student_websocket(
     print(f"✅ [Student WS] Registering connection for student {student_id}, trip {trip_id}")
     await gps_manager.connect(websocket, "student", student_id)
 
-    # Send latest location if available, or send empty state
-    latest_location = await get_latest_location(db, trip_id)
+    # Send full route history and latest location
+    route_history = await get_trip_route_history(db, trip_id, limit=500)  # Get last 500 points
+    latest_location = route_history[0] if route_history else None
+    
     print(f"📍 [Student WS] Latest location: {latest_location.latitude if latest_location else 'None'}, {latest_location.longtitude if latest_location else 'None'}")
+    print(f"📍 [Student WS] Route history points: {len(route_history)}")
     
     if latest_location:
+        # Convert route history to list of coordinates
+        path_coordinates = [
+            {
+                "latitude": loc.latitude,
+                "longitude": loc.longtitude,
+                "timestamp": loc.timestamp.isoformat(),
+                "speed": loc.speed,
+                "heading": loc.heading
+            }
+            for loc in reversed(route_history)  # Reverse to get chronological order (oldest to newest)
+        ]
+        
         await websocket.send_json({
             "type": "initial_location",
             "data": {
@@ -243,15 +258,16 @@ async def student_websocket(
                 "bus_id": trip.bus_id if trip.bus else None,
                 "bus_number": trip.bus.plate_num if trip.bus else "Unknown",
                 "latitude": latest_location.latitude,
-                "longitude": latest_location.longtitude,  # Note: DB uses 'longtitude' (typo), but we send as 'longitude' to frontend
+                "longitude": latest_location.longtitude,
                 "speed": latest_location.speed,
                 "heading": latest_location.heading,
                 "last_update": latest_location.timestamp.isoformat(),
-                "has_reservation": bool(reservation)
+                "has_reservation": bool(reservation),
+                "path": path_coordinates  # Add full path history
             }
         })
     else:
-        # Send empty state if no location yet - this keeps the connection alive
+        # Send empty state if no location yet
         await websocket.send_json({
             "type": "initial_location",
             "data": {
@@ -264,7 +280,8 @@ async def student_websocket(
                 "heading": 0.0,
                 "last_update": datetime.now(timezone.utc).isoformat(),
                 "has_reservation": bool(reservation),
-                "status": "waiting"
+                "status": "waiting",
+                "path": []  # Empty path
             }
         })
         print(f"📍 [Student WS] No location data yet, sent empty state")
@@ -378,6 +395,7 @@ async def driver_websocket(websocket: WebSocket, driver_id: int, db: AsyncSessio
     """
 
     # Accept the WebSocket connection first
+    print('driver websocket requested')
     await websocket.accept()
 
     # ---- AUTH: READ TOKEN FROM QUERY PARAMETERS ----
@@ -470,11 +488,25 @@ async def driver_websocket(websocket: WebSocket, driver_id: int, db: AsyncSessio
                 "timestamp": datetime.utcnow().isoformat()
             })
 
-            # Broadcast to students and admins
+            # Broadcast to students and admins with new location point
+            # For students: send just the new point to append to their path
+            student_location_data = {
+                "type": "location_update", 
+                "data": {
+                    **location_data,
+                    "new_point": {  # Single new point to add to path
+                        "latitude": location.latitude,
+                        "longitude": location.longitude,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "speed": location.speed,
+                        "heading": location.heading
+                    }
+                }
+            }
             
             await gps_manager.broadcast_to_students(
                 trip_id,
-                {"type": "location_update", "data": location_data},
+                student_location_data,
                 db
             )
             print('data sent to students from driver route')
