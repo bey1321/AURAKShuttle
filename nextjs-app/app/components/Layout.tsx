@@ -15,7 +15,6 @@ import Image from "next/image"
 
 import { Button } from "./ui";
 import React from "react";
-import Image from "next/image";
 
 interface LayoutProps {
   children: React.ReactNode;
