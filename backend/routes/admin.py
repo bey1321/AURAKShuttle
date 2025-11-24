@@ -879,11 +879,11 @@ def get_feedbacks(db: db_dependency, admin = Depends(get_user)):
         
         query = (
             select(Rating)
-            .join(Trip)
             .options(
-                selectinload(Trip.route),
-                selectinload(Trip.driver),
-                selectinload(Trip.bus)
+                selectinload(Rating.trip).selectinload(Trip.route),
+                selectinload(Rating.trip).selectinload(Trip.driver),
+                selectinload(Rating.trip).selectinload(Trip.bus),
+                selectinload(Rating.user)
             )
         )
 

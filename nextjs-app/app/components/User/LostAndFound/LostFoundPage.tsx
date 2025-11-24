@@ -318,37 +318,72 @@ export function LostFoundPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-4">
-            {["obj_name", "obj_description", "obj_type"].map((field) => (
+          <div className="space-y-4 py-4">
+            <div>
+              <label htmlFor="obj_name" className="block text-sm font-medium mb-2">
+                Item Name <span className="text-red-500">*</span>
+              </label>
               <input
-                key={field}
+                id="obj_name"
                 className="w-full border p-2 rounded"
-                placeholder={
-                  field === "obj_name"
-                    ? "Item Name"
-                    : field === "obj_description"
-                    ? "Description"
-                    : "Type/Category"
-                }
-                value={(newItemData as any)[field]}
+                placeholder="e.g., Blue Backpack, iPhone 13"
+                value={newItemData.obj_name}
                 onChange={(e) =>
-                  setNewItemData({ ...newItemData, [field]: e.target.value })
+                  setNewItemData({ ...newItemData, obj_name: e.target.value })
                 }
               />
-            ))}
-            <input
-              className="w-full border p-2 rounded"
-              type="number"
-              placeholder="Trip ID"
-              value={newItemData.trip_id}
-              onChange={(e) =>
-                setNewItemData({
-                  ...newItemData,
-                  trip_id: Number(e.target.value),
-                })
-              }
-            />
-            <div className="flex justify-end gap-2 mt-2">
+            </div>
+
+            <div>
+              <label htmlFor="obj_description" className="block text-sm font-medium mb-2">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="obj_description"
+                className="w-full border p-2 rounded min-h-[80px]"
+                placeholder="Provide detailed description of the item..."
+                value={newItemData.obj_description}
+                onChange={(e) =>
+                  setNewItemData({ ...newItemData, obj_description: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <label htmlFor="obj_type" className="block text-sm font-medium mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="obj_type"
+                className="w-full border p-2 rounded"
+                placeholder="e.g., Electronics, Clothing, Accessories"
+                value={newItemData.obj_type}
+                onChange={(e) =>
+                  setNewItemData({ ...newItemData, obj_type: e.target.value })
+                }
+              />
+            </div>
+
+            <div>
+              <label htmlFor="trip_id" className="block text-sm font-medium mb-2">
+                Trip ID <span className="text-muted-foreground text-xs">(optional)</span>
+              </label>
+              <input
+                id="trip_id"
+                className="w-full border p-2 rounded"
+                type="number"
+                placeholder="Enter trip ID if known"
+                value={newItemData.trip_id || ""}
+                onChange={(e) =>
+                  setNewItemData({
+                    ...newItemData,
+                    trip_id: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 variant="outline"
                 onClick={() => setShowReportDialog(false)}

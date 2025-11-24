@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Search } from "lucide-react";
 import { adminAPI } from "../../../lib/api";
 import {
   Table,
@@ -151,12 +152,15 @@ export function AdminManageUsers() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 items-center">
-        <Input
-          placeholder="Search users..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="sm:w-1/3"
-        />
+        <div className="relative sm:w-1/3 w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, ID, or role..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         <Select value={filterRole} onValueChange={setFilterRole}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Filter by role" />
@@ -186,7 +190,6 @@ export function AdminManageUsers() {
                   <TableHead>First Name</TableHead>
                   <TableHead>Last Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>UserSchoolID</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -197,7 +200,6 @@ export function AdminManageUsers() {
                     <TableCell>{user.firstName}</TableCell>
                     <TableCell>{user.lastName}</TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.UserSchoolID}</TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell className="flex gap-2">
                       <Button

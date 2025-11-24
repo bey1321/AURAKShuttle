@@ -8,6 +8,7 @@ import {
   Clock,
   Users,
   AlertCircle,
+  User,
 } from "lucide-react";
 import {
   Card,
@@ -29,7 +30,25 @@ import {
 } from "../ui";
 import { upcomingTrips, nextShuttle } from "../../data/database";
 import { getNotifications, LocalNotification } from "../../lib/localNotifications";
+import { userAPI } from "../../lib/api";
 import React, { useState, useEffect, useRef } from "react";
+
+interface Trip {
+  id: number;
+  date: string;
+  status: string;
+  ETA: string;
+  bus_id: number;
+  route_id: number;
+  route_name: string;
+  departure: string;
+  arrival: string;
+  driver: string;
+  capacity?: number;
+  available?: number;
+  days: string[];
+  raw?: any;
+}
 
 interface StudentDashboardProps {
   onNavigate?: (page: string) => void;
@@ -38,7 +57,9 @@ interface StudentDashboardProps {
 export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
   const [showReserveDialog, setShowReserveDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [todaysTrips, setTodaysTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const geoWatchRef = useRef<number | null>(null);
@@ -169,6 +190,57 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
   const [localNotifs, setLocalNotifs] = React.useState<LocalNotification[]>([]);
   const [activeNotif, setActiveNotif] = React.useState<LocalNotification | null>(null);
   const [notifDialogOpen, setNotifDialogOpen] = React.useState(false);
+
+  // Fetch today's trips
+  useEffect(() => {
+    const fetchTodaysTrips = async () => {
+      setLoading(true);
+      try {
+        const myTripsData = await userAPI.getMyTrips();
+        
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Map and filter trips for today
+        const mappedTrips = (myTripsData || [])
+          .map((trip: any) => ({
+            id: trip.id,
+            date: trip.date || "",
+            status: trip.status || "",
+            ETA: trip.ETA || trip.start_time || "",
+            bus_id: trip.bus_id || 0,
+            route_id: trip.route_id || trip.route?.id || 0,
+            route_name: trip.route_name || trip.route?.name || "",
+            departure: trip.start_time || trip.ETA || "",
+            arrival: trip.end_time || trip.ETA || "",
+            driver: trip.driver_name || trip.driver || (trip.bus_id ? `Bus ${trip.bus_id}` : "N/A"),
+            capacity: typeof trip.total_seats === "number"
+              ? trip.total_seats
+              : typeof trip.capacity === "number"
+              ? trip.capacity
+              : trip.bus?.no_seats
+              ? Number(trip.bus.no_seats)
+              : undefined,
+            available: typeof trip.seats_remaining === "number"
+              ? trip.seats_remaining
+              : typeof trip.available === "number"
+              ? trip.available
+              : undefined,
+            days: trip.days_of_week || trip.route?.days_of_week || [],
+            raw: trip,
+          } as Trip))
+          .filter((trip: Trip) => trip.date === today); // Filter for today only
+        
+        setTodaysTrips(mappedTrips);
+      } catch (err) {
+        console.error("Failed to fetch today's trips:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTodaysTrips();
+  }, []);
 
   useEffect(() => {
     // load notifications from localStorage (frontend-only)
@@ -436,56 +508,100 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
         </Dialog>
       </div>
 
-      {/* Upcoming Trips */}
+      {/* Today's Schedule */}
       <Card>
         <CardHeader>
           <CardTitle>Today's Schedule</CardTitle>
-          <CardDescription>All available shuttles for today</CardDescription>
+          <CardDescription>Your registered trips for today</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {upcomingTrips.map((trip) => (
-              <div
-                key={trip.id}
-                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Bus className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h4>{trip.route}</h4>
-                    <p className="text-sm text-muted-foreground">{trip.time}</p>
-                  </div>
-                </div>
+          {loading ? (
+            <p className="text-center py-4 text-muted-foreground">Loading trips...</p>
+          ) : todaysTrips.length === 0 ? (
+            <p className="text-muted-foreground">You have no trips scheduled for today.</p>
+          ) : (
+            <div className="space-y-4">
+              {todaysTrips.map((trip) => (
+                <Card key={trip.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Bus className="w-6 h-6 text-primary" />
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <h3>{trip.route_name}</h3>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              ID: {trip.id} • {trip.date} • {trip.status}
+                            </div>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <User className="w-4 h-4" />
+                                <span>{trip.driver}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{trip.departure} - {trip.arrival}</span>
+                              </div>
+                            </div>
+                          </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <Badge
-                      variant={
-                        trip.status === "On Time" ? "default" : "destructive"
-                      }
-                    >
-                      {trip.status}
-                    </Badge>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Seats: {trip.seats}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedTrip(trip);
-                      setShowDetailsDialog(true);
-                    }}
-                  >
-                    Details
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                          {Array.isArray(trip.days) && trip.days.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Days:</span>
+                              <div className="flex gap-1">
+                                {trip.days.map((day) => (
+                                  <Badge key={day} variant="outline" className="text-xs">
+                                    {day}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Info:</span>
+                            <span className="text-sm">
+                              {typeof trip.capacity === "number" && typeof trip.available === "number"
+                                ? `${trip.available} of ${trip.capacity} seats available`
+                                : "Seats info unavailable"}
+                            </span>
+                            {typeof trip.capacity === "number" && typeof trip.available === "number" ? (
+                              <div className="flex-1 max-w-xs">
+                                <Progress 
+                                  value={((trip.capacity - trip.available) / trip.capacity) * 100} 
+                                  className="h-2"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedTrip(trip);
+                            setShowDetailsDialog(true);
+                          }}
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          onClick={() => onNavigate?.("tracking")}
+                        >
+                          <MapPin className="w-4 h-4 mr-2" />
+                          Track Live
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -541,39 +657,81 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
           </DialogHeader>
           {selectedTrip && (
             <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Trip ID</Label>
+                  <Input value={selectedTrip.id} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input value={selectedTrip.date || "—"} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Input value={selectedTrip.status || "—"} disabled />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Route ID</Label>
+                  <Input value={selectedTrip.route_id || "—"} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bus ID</Label>
+                  <Input value={selectedTrip.bus_id || "—"} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>ETA</Label>
+                  <Input value={selectedTrip.ETA || "—"} disabled />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Route</Label>
-                <Input value={selectedTrip.route} disabled />
+                <Input value={selectedTrip.route_name} disabled />
               </div>
               <div className="space-y-2">
-                <Label>Departure Time</Label>
-                <Input value={selectedTrip.time} disabled />
+                <Label>Driver</Label>
+                <Input value={selectedTrip.driver} disabled />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Departure Time</Label>
+                  <Input value={selectedTrip.departure} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Arrival Time</Label>
+                  <Input value={selectedTrip.arrival} disabled />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
-                <Badge
-                  variant={
-                    selectedTrip.status === "On Time"
-                      ? "default"
-                      : "destructive"
-                  }
-                >
-                  {selectedTrip.status}
-                </Badge>
+                <Label>Operating Days</Label>
+                <div className="flex gap-2">
+                  {selectedTrip.days.map((day) => (
+                    <Badge key={day} variant="outline">
+                      {day}
+                    </Badge>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Available Seats</Label>
-                <Input value={selectedTrip.seats} disabled />
+                <Label>Capacity</Label>
+                <Input 
+                  value={`${selectedTrip.capacity ?? "N/A"} seats (${selectedTrip.available ?? "N/A"} available)`} 
+                  disabled 
+                />
               </div>
               <div className="flex gap-2">
                 <Button
                   className="flex-1"
                   onClick={() => {
                     setShowDetailsDialog(false);
-                    setShowReserveDialog(true);
+                    onNavigate?.("tracking");
                   }}
                 >
-                  Reserve Seat
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Track Live
                 </Button>
                 <Button
                   variant="outline"

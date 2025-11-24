@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { adminAPI } from "../../lib/api";
-import { trips, drivers, adminStats } from "../../data/database";
+import { adminAPI, lostFoundAPI } from "../../lib/api";
 import {
   Bus,
   Users,
@@ -52,6 +51,70 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
   const [buses, setBuses] = useState<any[]>([]);
   const [busLoading, setBusLoading] = useState(true);
 
+  const [busiestRoutes, setBusiestRoutes] = useState<any[]>([]);
+  const [busiestLoading, setBusiestLoading] = useState(true);
+
+  const [weeklyUsage, setWeeklyUsage] = useState<{day: string, count: number, percentage: number}[]>([]);
+  const [usageLoading, setUsageLoading] = useState(true);
+
+  const [stats, setStats] = useState({
+    totalTrips: 0,
+    activeDrivers: 0,
+    totalStudents: 0,
+    registrationRequests: 0,
+    lostItemClaims: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const loadStats = async () => {
+    try {
+      setStatsLoading(true);
+      
+      const [usersData, driversData, tripsData, registrationsData, claimsData] = await Promise.all([
+        adminAPI.getUsers().catch(() => []),
+        adminAPI.getDrivers().catch(() => []),
+        adminAPI.getTrips().catch(() => []),
+        adminAPI.getRegistrationRequests().catch(() => []),
+        lostFoundAPI.getAdminFoundAndClaims().catch(() => []),
+      ]);
+
+      // Count active drivers (assuming drivers with status 'active' or similar)
+      const activeDriversCount = Array.isArray(driversData) 
+        ? driversData.filter((d: any) => d.status === 'Active' || d.status === 'active').length
+        : 0;
+
+      // Count total students (users with role 'student')
+      const totalStudentsCount = Array.isArray(usersData)
+        ? usersData.filter((u: any) => u.role === 'student' || u.role === 'Student').length
+        : 0;
+
+      // Count registration requests
+      const registrationRequestsCount = Array.isArray(registrationsData) ? registrationsData.length : 0;
+
+      // Count lost item claims
+      let claimsCount = 0;
+      if (Array.isArray(claimsData)) {
+        claimsData.forEach((item: any) => {
+          if (Array.isArray(item.claim)) {
+            claimsCount += item.claim.length;
+          }
+        });
+      }
+
+      setStats({
+        totalTrips: Array.isArray(tripsData) ? tripsData.length : 0,
+        activeDrivers: activeDriversCount,
+        totalStudents: totalStudentsCount,
+        registrationRequests: registrationRequestsCount,
+        lostItemClaims: claimsCount,
+      });
+    } catch (e: any) {
+      console.error("Error loading stats:", e);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   const loadBuses = async () => {
     try {
       setBusLoading(true);
@@ -78,6 +141,86 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
   const [routes, setRoutes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const loadBusiestRoutes = async () => {
+    try {
+      setBusiestLoading(true);
+      const routesData = await adminAPI.getRoutes();
+      const tripsData = await adminAPI.getTrips();
+      
+      // Count trips for each route
+      const routesWithTripCounts = (Array.isArray(routesData) ? routesData : []).map((route) => {
+        const routeTrips = Array.isArray(tripsData) 
+          ? tripsData.filter((trip: any) => trip.route_id === route.id)
+          : [];
+        
+        return {
+          id: route.id,
+          name: route.name || "Unknown Route",
+          startTerminal: route.start_terminal?.terminalName || "—",
+          tripCount: routeTrips.length,
+        };
+      });
+
+      // Sort by trip count (descending - highest to lowest) and take top 4
+      const sorted = routesWithTripCounts
+        .sort((a, b) => b.tripCount - a.tripCount)
+        .slice(0, 4);
+
+      setBusiestRoutes(sorted);
+    } catch (e: any) {
+      console.error("Error loading busiest routes:", e);
+      setBusiestRoutes([]);
+    } finally {
+      setBusiestLoading(false);
+    }
+  };
+
+  const loadWeeklyUsage = async () => {
+    try {
+      setUsageLoading(true);
+      const tripsData = await adminAPI.getTrips();
+      
+      // Count trips by day of week
+      const dayMap: {[key: string]: number} = {
+        'Monday': 0,
+        'Tuesday': 0,
+        'Wednesday': 0,
+        'Thursday': 0,
+        'Friday': 0,
+      };
+
+      if (Array.isArray(tripsData)) {
+        tripsData.forEach((trip: any) => {
+          if (trip.date) {
+            const date = new Date(trip.date);
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = dayNames[date.getDay()];
+            if (dayMap.hasOwnProperty(dayName)) {
+              dayMap[dayName]++;
+            }
+          }
+        });
+      }
+
+      // Find max count for percentage calculation
+      const maxCount = Math.max(...Object.values(dayMap), 1);
+
+      // Convert to array format
+      const usageData = Object.entries(dayMap).map(([day, count]) => ({
+        day,
+        count,
+        percentage: (count / maxCount) * 100,
+      }));
+
+      setWeeklyUsage(usageData);
+    } catch (e: any) {
+      console.error("Error loading weekly usage:", e);
+      setWeeklyUsage([]);
+    } finally {
+      setUsageLoading(false);
+    }
+  };
+
   const loadSemesterTrips = async () => {
     try {
       setLoading(true);
@@ -92,8 +235,11 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
   };
 
   useEffect(() => {
+    loadStats();
     loadSemesterTrips();
     loadBuses();
+    loadBusiestRoutes();
+    loadWeeklyUsage();
   }, []);
 
   const renderTerminals = (terminalsArray: any[]) => {
@@ -105,8 +251,6 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
         .join(", ") || "—"
     );
   };
-
-  const stats = adminStats;
 
   return (
     <div className="p-6 space-y-6">
@@ -127,7 +271,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Trips</p>
-                <h3>{stats.totalTrips}</h3>
+                <h3>{statsLoading ? "..." : stats.totalTrips}</h3>
               </div>
               <Bus className="w-8 h-8 text-primary" />
             </div>
@@ -139,7 +283,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Drivers</p>
-                <h3>{stats.activeDrivers}</h3>
+                <h3>{statsLoading ? "..." : stats.activeDrivers}</h3>
               </div>
               <Users className="w-8 h-8 text-primary" />
             </div>
@@ -151,7 +295,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Students</p>
-                <h3>{stats.totalStudents}</h3>
+                <h3>{statsLoading ? "..." : stats.totalStudents}</h3>
               </div>
               <Users className="w-8 h-8 text-primary" />
             </div>
@@ -162,8 +306,8 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Registration reguests</p>
-                <h3>{stats.avgOccupancy}</h3>
+                <p className="text-sm text-muted-foreground">Registration requests</p>
+                <h3>{statsLoading ? "..." : stats.registrationRequests}</h3>
               </div>
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
@@ -175,7 +319,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Lost Item Claims</p>
-                <h3>{stats.avgOccupancy}</h3>
+                <h3>{statsLoading ? "..." : stats.lostItemClaims}</h3>
               </div>
               <TrendingUp className="w-8 h-8 text-primary" />
             </div>
@@ -188,103 +332,64 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
         <Card>
           <CardHeader>
             <CardTitle>Usage Analytics</CardTitle>
-            <CardDescription>Trip statistics for this week</CardDescription>
+            <CardDescription>Trip statistics by day of week</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span>Monday</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary"
-                      style={{ width: "85%" }}
-                    />
+            {usageLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : weeklyUsage.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No usage data available.</p>
+            ) : (
+              <div className="space-y-4">
+                {weeklyUsage.map((item) => (
+                  <div key={item.day} className="flex items-center justify-between">
+                    <span>{item.day}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-sm">{item.count}</span>
+                    </div>
                   </div>
-                  <span className="text-sm">680</span>
-                </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between">
-                <span>Tuesday</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary"
-                      style={{ width: "92%" }}
-                    />
-                  </div>
-                  <span className="text-sm">720</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Wednesday</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary"
-                      style={{ width: "78%" }}
-                    />
-                  </div>
-                  <span className="text-sm">610</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Thursday</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary"
-                      style={{ width: "88%" }}
-                    />
-                  </div>
-                  <span className="text-sm">690</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Friday</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary"
-                      style={{ width: "65%" }}
-                    />
-                  </div>
-                  <span className="text-sm">510</span>
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Busiest Routes</CardTitle>
-            <CardDescription>Top performing routes this month</CardDescription>
+            <CardDescription>Routes sorted by number of trips</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { route: "Main Campus → Khatt", trips: 156, growth: "+12%" },
-                { route: "RAK Mall → Main Campus", trips: 142, growth: "+8%" },
-                { route: "Main Campus → RAK Mall", trips: 138, growth: "+5%" },
-                { route: "Khatt → Main Campus", trips: 129, growth: "+3%" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-4 h-4 text-primary" />
+            {busiestLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : busiestRoutes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No route data available.</p>
+            ) : (
+              <div className="space-y-4">
+                {busiestRoutes.map((route) => (
+                  <div key={route.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <span className="font-medium">{route.name}</span>
+                        <p className="text-xs text-muted-foreground">{route.startTerminal}</p>
+                      </div>
                     </div>
-                    <span>{item.route}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">{route.tripCount} trips</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span>{item.trips} trips</span>
-                    <Badge variant="outline" className="text-green-600">
-                      {item.growth}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

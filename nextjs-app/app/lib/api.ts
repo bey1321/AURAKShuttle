@@ -338,6 +338,8 @@ export const adminAPI = {
           start_time: any; id: number; name: string 
 };
       }>>("/admin/registration_request"),
+    
+    getFeedbacks: () => apiCall<any[]>("/admin/feedback"),
 };
 export const userAPI = {
   getMyTrips: () => apiCall<any[]>("/user/get_mytrips"),

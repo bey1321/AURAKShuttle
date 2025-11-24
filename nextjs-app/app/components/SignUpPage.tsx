@@ -22,18 +22,24 @@ export default function SignUpPage({ onSwitchToLogin }: SignUpPageProps) {
     setLoading(true);
 
     try {
-      const res = await authAPI.signup({
+      const payload = {
         email,
         password,
         first_name,
         last_name,
-      });
+        role: "student",
+      };
+      
+      console.log("Signup payload:", payload);
+      
+      const res = await authAPI.signup(payload);
 
       setMessage(res.message || "Signup successful! You can now log in.");
     } catch (err: any) {
-      console.error("Signup error:", err);
-      setMessage(err.message || "Signup failed. Please try again.");
-    } finally {
+  const errorMessage = err?.response?.detail || err.message;
+  setMessage(errorMessage || "Signup failed");
+}
+finally {
       setLoading(false);
     }
   };

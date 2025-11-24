@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { assignedTrips } from "../../data/database";
 import {
   Bus,
@@ -10,7 +10,12 @@ import {
   Users,
   Send,
   CheckCircle,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Circle,
 } from "lucide-react";
+import { driverAPI } from "../../lib/api";
 import {
   Card,
   CardContent,
@@ -28,11 +33,44 @@ import { DriverGPSComponent } from "../GPS";
 export function DriverDashboard() {
   const [alertMessage, setAlertMessage] = useState("");
   const [gpsEnabled, setGpsEnabled] = useState(true);
-  const [selectedTripId, setSelectedTripId] = useState<number | undefined>(
-    undefined
-  );
+  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedTrip, setExpandedTrip] = useState<number | null>(null);
   // TODO: Get driverId from auth context/session
   const driverId = 2; // Replace with actual driver ID from auth
+
+  const today = new Date().toISOString().split("T")[0];
+  const todaysTrips = trips.filter(
+    (trip) => trip.date === today && !trip.route?.type?.toLowerCase().includes("semester")
+  );
+  const semesterTrips = trips.filter((trip) =>
+    trip.route?.type?.toLowerCase().includes("semester")
+  );
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const t = await driverAPI.getMyTrips();
+        // Sort trips: semester-wide first, then by date
+        const sortedTrips = t.sort((a: any, b: any) => {
+          const aIsSemester = a.route?.type?.toLowerCase().includes("semester");
+          const bIsSemester = b.route?.type?.toLowerCase().includes("semester");
+          if (aIsSemester && !bIsSemester) return -1;
+          if (!aIsSemester && bIsSemester) return 1;
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateA - dateB;
+        });
+        setTrips(sortedTrips);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const handleSendAlert = () => {
     if (alertMessage.trim()) {
@@ -107,91 +145,344 @@ export function DriverDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Assigned Trips */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>My Assigned Trips</CardTitle>
-            <CardDescription>Your schedule for today</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {assignedTrips.map((trip) => (
-              <div
-                key={trip.id}
-                className={`p-4 border rounded-lg ${
-                  trip.status === "In Progress"
-                    ? "border-primary bg-primary/5"
-                    : "border-border"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Bus className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4>{trip.route}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {trip.time}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      trip.status === "In Progress" ? "default" : "outline"
-                    }
+        <div className="lg:col-span-2 space-y-6">
+          {/* Semester-Wide Trips */}
+          {!loading && semesterTrips.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Semester-Wide Trips</CardTitle>
+                <CardDescription>
+                  Registered routes that run throughout the semester
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {semesterTrips.map((trip) => (
+                  <Card
+                    key={trip.id}
+                    className="overflow-hidden transition-all hover:shadow-md cursor-pointer"
+                    onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}
                   >
-                    {trip.status}
-                  </Badge>
-                </div>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              trip.status === "completed"
+                                ? "bg-green-500"
+                                : trip.status === "in_progress"
+                                ? "bg-blue-500"
+                                : trip.status === "scheduled"
+                                ? "bg-red-400"
+                                : "bg-gray-400"
+                            }`}
+                          >
+                            {trip.status === "completed" ? (
+                              <CheckCircle className="w-5 h-5 text-white" />
+                            ) : trip.status === "in_progress" ? (
+                              <Bus className="w-5 h-5 text-white" />
+                            ) : trip.status === "scheduled" ? (
+                              <Bus className="w-5 h-5 text-white" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{trip.route?.name || "Route"}</h3>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(trip.date).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {trip.route?.start_time || "N/A"} - {trip.route?.end_time || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={trip.status === "completed" ? "default" : "secondary"}
+                            className={`${
+                              trip.status === "completed"
+                                ? "bg-green-500 hover:bg-green-600"
+                                : trip.status === "in_progress"
+                                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                                : trip.status === "scheduled"
+                                ? "bg-red-400 hover:bg-red-500 text-white"
+                                : ""
+                            }`}
+                          >
+                            {trip.status.replace("_", " ").toUpperCase()}
+                          </Badge>
+                          {expandedTrip === trip.id ? (
+                            <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      {trip.passengers}/{trip.capacity} passengers
-                    </span>
-                  </div>
+                      {expandedTrip === trip.id && (
+                        <div className="mt-4 pt-4 border-t space-y-3">
+                          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                            <Bus className="w-5 h-5 text-primary" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">Bus Details</p>
+                              <p className="text-sm text-muted-foreground">
+                                {trip.bus?.plate_num || "N/A"} • {trip.bus?.model || "N/A"}
+                              </p>
+                            </div>
+                            <Badge variant="outline">{trip.bus?.no_seats || 0} seats</Badge>
+                          </div>
 
-                  {trip.status === "In Progress" ? (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedTripId(trip.id)}
-                      >
-                        <MapPin className="w-4 h-4 mr-2" />
-                        Share GPS
-                      </Button>
-                      <Button size="sm">Complete Trip</Button>
+                          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-primary/5 to-transparent rounded-lg border border-primary/20">
+                            <MapPin className="w-5 h-5 text-primary" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{trip.route?.type || "Standard Route"}</p>
+                            </div>
+                          </div>
+
+                          {trip.route?.days_of_week && trip.route.days_of_week.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-muted-foreground">Operating Days</p>
+                              <div className="flex flex-wrap gap-2">
+                                {trip.route.days_of_week.map((day: string) => (
+                                  <Badge key={day} variant="outline" className="text-xs">
+                                    {day.substring(0, 3)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="pt-2">
+                            {trip.status === "scheduled" && (
+                              <Button
+                                className="w-full"
+                                size="lg"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTripId(trip.id);
+                                }}
+                              >
+                                Start Trip
+                              </Button>
+                            )}
+                            {trip.status === "in_progress" && (
+                              <div className="flex gap-2">
+                                <Button
+                                  className="flex-1"
+                                  size="lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTripId(trip.id);
+                                  }}
+                                >
+                                  Update Location
+                                </Button>
+                                <Button
+                                  className="flex-1"
+                                  variant="outline"
+                                  size="lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  End Trip
+                                </Button>
+                              </div>
+                            )}
+                            {trip.status === "completed" && (
+                              <Button className="w-full" variant="ghost" size="lg" disabled>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Trip Completed
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedTripId(trip.id)}
-                    >
-                      Start Trip
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-        {/* GPS Tracking & Send Alert */}
-        <div className="space-y-6">
-          {/* GPS Tracking Component */}
-          <DriverGPSComponent
-            driverId={driverId}
-            tripId={selectedTripId}
-            onLocationSent={(success) => {
-              if (!success) {
-                setGpsEnabled(false);
-              }
-            }}
-          />
+          {/* Today's Trips */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Today's Trips</CardTitle>
+              <CardDescription>Your schedule for today</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {loading ? (
+                <div className="text-sm text-muted-foreground">Loading...</div>
+              ) : todaysTrips.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No trips scheduled for today.</div>
+              ) : (
+                todaysTrips.map((trip) => (
+                  <Card
+                    key={trip.id}
+                    className="overflow-hidden transition-all hover:shadow-md cursor-pointer"
+                    onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              trip.status === "completed"
+                                ? "bg-green-500"
+                                : trip.status === "in_progress"
+                                ? "bg-blue-500"
+                                : trip.status === "scheduled"
+                                ? "bg-red-400"
+                                : "bg-gray-400"
+                            }`}
+                          >
+                            {trip.status === "completed" ? (
+                              <CheckCircle className="w-5 h-5 text-white" />
+                            ) : trip.status === "in_progress" ? (
+                              <Bus className="w-5 h-5 text-white" />
+                            ) : trip.status === "scheduled" ? (
+                              <Bus className="w-5 h-5 text-white" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{trip.route?.name || "Route"}</h3>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(trip.date).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {trip.route?.start_time || "N/A"} - {trip.route?.end_time || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={trip.status === "completed" ? "default" : "secondary"}
+                            className={`${
+                              trip.status === "completed"
+                                ? "bg-green-500 hover:bg-green-600"
+                                : trip.status === "in_progress"
+                                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                                : trip.status === "scheduled"
+                                ? "bg-red-400 hover:bg-red-500 text-white"
+                                : ""
+                            }`}
+                          >
+                            {trip.status.replace("_", " ").toUpperCase()}
+                          </Badge>
+                          {expandedTrip === trip.id ? (
+                            <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
 
+                      {expandedTrip === trip.id && (
+                        <div className="mt-4 pt-4 border-t space-y-3">
+                          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                            <Bus className="w-5 h-5 text-primary" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">Bus Details</p>
+                              <p className="text-sm text-muted-foreground">
+                                {trip.bus?.plate_num || "N/A"} • {trip.bus?.model || "N/A"}
+                              </p>
+                            </div>
+                            <Badge variant="outline">{trip.bus?.no_seats || 0} seats</Badge>
+                          </div>
+
+                          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-primary/5 to-transparent rounded-lg border border-primary/20">
+                            <MapPin className="w-5 h-5 text-primary" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{trip.route?.type || "Standard Route"}</p>
+                            </div>
+                          </div>
+
+                          {trip.route?.days_of_week && trip.route.days_of_week.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-muted-foreground">Operating Days</p>
+                              <div className="flex flex-wrap gap-2">
+                                {trip.route.days_of_week.map((day: string) => (
+                                  <Badge key={day} variant="outline" className="text-xs">
+                                    {day.substring(0, 3)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="pt-2">
+                            {trip.status === "scheduled" && (
+                              <Button
+                                className="w-full"
+                                size="lg"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTripId(trip.id);
+                                }}
+                              >
+                                Start Trip
+                              </Button>
+                            )}
+                            {trip.status === "in_progress" && (
+                              <div className="flex gap-2">
+                                <Button
+                                  className="flex-1"
+                                  size="lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTripId(trip.id);
+                                  }}
+                                >
+                                  Update Location
+                                </Button>
+                                <Button
+                                  className="flex-1"
+                                  variant="outline"
+                                  size="lg"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  End Trip
+                                </Button>
+                              </div>
+                            )}
+                            {trip.status === "completed" && (
+                              <Button className="w-full" variant="ghost" size="lg" disabled>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Trip Completed
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+  
           {/* Send Alert */}
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Send Alert</CardTitle>

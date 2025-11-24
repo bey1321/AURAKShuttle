@@ -105,7 +105,6 @@ h-full w-full max-w-[1400px] mx-auto px-8 lg:px-12 flex items-center justify-bet
           <div className="text-white max-w-2xl">
             <p className="uppercase tracking-widest text-xl mb-6 text-red">HOW TO GET FROM</p>
             <h1 className="text-[88px] font-extrabold leading-[0.95] mb-6 drop-shadow-lg">Anywhere in the UAE to <br />AURAK</h1>
-            <p className="text-xl text-white/90 tracking-wide">By bus, taxi, car or foot</p>
           </div>
 
           {/* Right card */}
@@ -138,12 +137,12 @@ h-full w-full max-w-[1400px] mx-auto px-8 lg:px-12 flex items-center justify-bet
                   />
                 </div>
 
-                <Button type="submit" className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white">
+                <Button type="submit" className="w-full py-3 bg-red-600 hover:bg-red-700 text-white">
                   {loading ? "Logging in..." : "Sign in"}
                 </Button>
 
                 <div className="text-center text-sm text-gray-600">
-                  Don't have an account? <button type="button" onClick={() => setShowSignUp(true)} className="text-pink-600 font-semibold">Sign up</button>
+                  Don't have an account? <button type="button" onClick={() => setShowSignUp(true)} className="text-red-600 font-semibold">Sign up</button>
                 </div>
               </form>
             ) : (
@@ -167,10 +166,10 @@ h-full w-full max-w-[1400px] mx-auto px-8 lg:px-12 flex items-center justify-bet
                   <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="w-full mt-1 px-4 py-3 border rounded-md bg-gray-50" required />
                 </div>
 
-                <Button type="submit" className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white">{loading ? "Signing up..." : "Create account"}</Button>
+                <Button type="submit" className="w-full py-3 bg-red-600 hover:bg-red-700 text-white">{loading ? "Signing up..." : "Create account"}</Button>
 
                 <div className="text-center text-sm text-gray-600">
-                  Already have an account? <button type="button" onClick={() => setShowSignUp(false)} className="text-pink-600 font-semibold">Log in</button>
+                  Already have an account? <button type="button" onClick={() => setShowSignUp(false)} className="text-red-600 font-semibold">Log in</button>
                 </div>
               </form>
             )}

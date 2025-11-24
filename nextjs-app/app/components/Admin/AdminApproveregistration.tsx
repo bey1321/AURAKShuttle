@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { adminAPI } from "../../lib/api";
 import {
   Card,
@@ -9,7 +10,8 @@ import {
   CardContent,
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { CheckCircle2, Loader2, User, MapPin, Clock } from "lucide-react";
+import { Input } from "../../components/ui/input";
+import { CheckCircle2, User, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface Registration {
@@ -28,6 +30,7 @@ const AdminApproveRegistrations = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchRegistrations = async () => {
     setLoading(true);
@@ -58,6 +61,18 @@ const AdminApproveRegistrations = () => {
     fetchRegistrations();
   }, []);
 
+  const filteredRegistrations = registrations.filter((reg) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      reg.first_name?.toLowerCase().includes(query) ||
+      reg.last_name?.toLowerCase().includes(query) ||
+      reg.student_email?.toLowerCase().includes(query) ||
+      reg.route_name?.toLowerCase().includes(query) ||
+      reg.status?.toLowerCase().includes(query) ||
+      reg.days_of_week?.some(day => day.toLowerCase().includes(query))
+    );
+  });
+
   const PageHeader = () => (
     <div className="mb-4">
       <h1 className="text-2xl font-semibold">Approve Registrations</h1>
@@ -84,7 +99,7 @@ const AdminApproveRegistrations = () => {
       <div>
         <PageHeader />
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -98,10 +113,26 @@ const AdminApproveRegistrations = () => {
     );
 
   return (
-    <div>
+    <div className="p-6 space-y-6">
       <PageHeader />
+      
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by student name, email, route, or status..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {filteredRegistrations.length === 0 ? (
+        <Card className="p-6 text-center text-muted-foreground">
+          No registrations match your search.
+        </Card>
+      ) : (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {registrations.map((reg) => (
+      {filteredRegistrations.map((reg) => (
         <Card
           key={reg.id}
           className="hover:shadow-md transition-all duration-200"
@@ -136,7 +167,8 @@ const AdminApproveRegistrations = () => {
             >
               {approvingId === reg.id ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Approving...
+                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                  Approving...
                 </>
               ) : (
                 <>
@@ -148,6 +180,7 @@ const AdminApproveRegistrations = () => {
         </Card>
       ))}
     </div>
+      )}
     </div>
   );
 };

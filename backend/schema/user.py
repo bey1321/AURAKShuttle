@@ -7,7 +7,7 @@ class UserCreateRequest(BaseModel):
     password: str
     first_name : str
     last_name : str
-    role : str
+    role : str | None = None,
 
 
 class UserLoginRequest(BaseModel):

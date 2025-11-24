@@ -15,6 +15,7 @@ import Image from "next/image"
 
 import { Button } from "./ui";
 import React from "react";
+import Image from "next/image";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,7 +50,6 @@ export function Layout({
       { icon: Bus, label: "My Trips", id: "my-trips" },
       { icon: Package, label: "Lost and Found", id: "driver-lost-found" },
       { icon: MapPin, label: "Live Tracking", id: "driver-live-tracking" },
-      { icon: Bell, label: "Send Alert", id: "send-alert" },
     ],
     admin: [
       { icon: Home, label: "Admin Dashboard", id: "admin-dashboard" },
@@ -61,6 +61,7 @@ export function Layout({
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
       { icon: MapPin, label: "Live Tracking", id: "admin-live-tracking" },
       { icon: Package, label: "Admin Lost & Found", id: "admin-lost-found" },
+      { icon: MessageSquare, label: "Admin Feedback", id: "admin-feedback" },
     ],
   };
 
