@@ -298,12 +298,63 @@ export function AdminLostFoundPage() {
             <DialogTitle>Report Lost Item</DialogTitle>
             <DialogDescription>Fill in the details to report a lost item.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 py-4">
-            <input type="text" placeholder="Name" value={newLostItem.obj_name} onChange={(e) => setNewLostItem({ ...newLostItem, obj_name: e.target.value })} className="w-full p-2 border rounded" />
-            <input type="text" placeholder="Description" value={newLostItem.obj_description} onChange={(e) => setNewLostItem({ ...newLostItem, obj_description: e.target.value })} className="w-full p-2 border rounded" />
-            <input type="text" placeholder="Category" value={newLostItem.obj_type} onChange={(e) => setNewLostItem({ ...newLostItem, obj_type: e.target.value })} className="w-full p-2 border rounded" />
-            <input type="number" placeholder="Trip ID" value={newLostItem.trip_id} onChange={(e) => setNewLostItem({ ...newLostItem, trip_id: Number(e.target.value) })} className="w-full p-2 border rounded" />
-            <div className="flex gap-2 mt-2">
+          <div className="space-y-4 py-4">
+            <div>
+              <label htmlFor="lost_obj_name" className="block text-sm font-medium mb-2">
+                Item Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="lost_obj_name"
+                type="text"
+                placeholder="e.g., Blue Backpack, iPhone 13"
+                value={newLostItem.obj_name}
+                onChange={(e) => setNewLostItem({ ...newLostItem, obj_name: e.target.value })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="lost_obj_description" className="block text-sm font-medium mb-2">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="lost_obj_description"
+                placeholder="Provide detailed description..."
+                value={newLostItem.obj_description}
+                onChange={(e) => setNewLostItem({ ...newLostItem, obj_description: e.target.value })}
+                className="w-full p-2 border rounded min-h-[80px]"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="lost_obj_type" className="block text-sm font-medium mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="lost_obj_type"
+                type="text"
+                placeholder="e.g., Electronics, Clothing, Accessories"
+                value={newLostItem.obj_type}
+                onChange={(e) => setNewLostItem({ ...newLostItem, obj_type: e.target.value })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="lost_trip_id" className="block text-sm font-medium mb-2">
+                Trip ID <span className="text-muted-foreground text-xs">(optional)</span>
+              </label>
+              <input
+                id="lost_trip_id"
+                type="number"
+                placeholder="Enter trip ID if known"
+                value={newLostItem.trip_id || ""}
+                onChange={(e) => setNewLostItem({ ...newLostItem, trip_id: Number(e.target.value) })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
               <Button onClick={handleReportLost}>Submit</Button>
               <Button variant="outline" onClick={() => setShowLostDialog(false)}>Cancel</Button>
             </div>
@@ -318,12 +369,63 @@ export function AdminLostFoundPage() {
             <DialogTitle>Report Found Item</DialogTitle>
             <DialogDescription>Fill in the details to report a found item.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 py-4">
-            <input type="text" placeholder="Name" value={newFoundItem.obj_name} onChange={(e) => setNewFoundItem({ ...newFoundItem, obj_name: e.target.value })} className="w-full p-2 border rounded" />
-            <input type="text" placeholder="Description" value={newFoundItem.obj_description} onChange={(e) => setNewFoundItem({ ...newFoundItem, obj_description: e.target.value })} className="w-full p-2 border rounded" />
-            <input type="text" placeholder="Category" value={newFoundItem.obj_type} onChange={(e) => setNewFoundItem({ ...newFoundItem, obj_type: e.target.value })} className="w-full p-2 border rounded" />
-            <input type="number" placeholder="Trip ID" value={newFoundItem.trip_id} onChange={(e) => setNewFoundItem({ ...newFoundItem, trip_id: Number(e.target.value) })} className="w-full p-2 border rounded" />
-            <div className="flex gap-2 mt-2">
+          <div className="space-y-4 py-4">
+            <div>
+              <label htmlFor="found_obj_name" className="block text-sm font-medium mb-2">
+                Item Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="found_obj_name"
+                type="text"
+                placeholder="e.g., Blue Backpack, iPhone 13"
+                value={newFoundItem.obj_name}
+                onChange={(e) => setNewFoundItem({ ...newFoundItem, obj_name: e.target.value })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="found_obj_description" className="block text-sm font-medium mb-2">
+                Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="found_obj_description"
+                placeholder="Provide detailed description..."
+                value={newFoundItem.obj_description}
+                onChange={(e) => setNewFoundItem({ ...newFoundItem, obj_description: e.target.value })}
+                className="w-full p-2 border rounded min-h-[80px]"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="found_obj_type" className="block text-sm font-medium mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="found_obj_type"
+                type="text"
+                placeholder="e.g., Electronics, Clothing, Accessories"
+                value={newFoundItem.obj_type}
+                onChange={(e) => setNewFoundItem({ ...newFoundItem, obj_type: e.target.value })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="found_trip_id" className="block text-sm font-medium mb-2">
+                Trip ID <span className="text-muted-foreground text-xs">(optional)</span>
+              </label>
+              <input
+                id="found_trip_id"
+                type="number"
+                placeholder="Enter trip ID if known"
+                value={newFoundItem.trip_id || ""}
+                onChange={(e) => setNewFoundItem({ ...newFoundItem, trip_id: Number(e.target.value) })}
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
               <Button onClick={handleReportFound}>Submit</Button>
               <Button variant="outline" onClick={() => setShowFoundDialog(false)}>Cancel</Button>
             </div>

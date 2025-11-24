@@ -62,9 +62,9 @@ export default function UserRouteRegistration() {
   }, []);
 
   const PageHeader = () => (
-    <div className="mb-6">
-      <h1 className="text-2xl font-semibold">Request a Trip</h1>
-      <p className="text-sm text-muted-foreground">Browse available routes and request registration for a trip.</p>
+    <div className="mb-8 px-6 pt-6">
+      <h1 className="text-3xl font-bold mb-2">Request a Trip</h1>
+      <p className="text-base text-muted-foreground">Browse available routes and request registration for a trip.</p>
     </div>
   );
 

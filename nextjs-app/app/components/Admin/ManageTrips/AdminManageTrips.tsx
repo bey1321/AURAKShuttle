@@ -151,13 +151,36 @@ export function AdminManageTrips() {
   // --- Filters ---
   const filterTrips = (trips: any[]) =>
     trips.filter((trip) => {
-      const routeName = trip.route?.name || "";
-      return routeName.toLowerCase().includes(search.toLowerCase());
+      const query = search.toLowerCase();
+      const routeName = trip.route_name || trip.route?.name || "";
+      const driverName = driversMap[trip.driver_id] || "";
+      const busPlate = busesMap[trip.bus_id] || "";
+      const date = trip.date || "";
+      const status = trip.status || "";
+      const startTerminal = terminalsMap[trip.route?.start_terminal_id] || "";
+      const endTerminal = terminalsMap[trip.route?.end_terminal_id] || "";
+      
+      return (
+        routeName.toLowerCase().includes(query) ||
+        driverName.toLowerCase().includes(query) ||
+        busPlate.toLowerCase().includes(query) ||
+        date.toLowerCase().includes(query) ||
+        status.toLowerCase().includes(query) ||
+        startTerminal.toLowerCase().includes(query) ||
+        endTerminal.toLowerCase().includes(query)
+      );
     });
   const filterRoutes = (routesList: any[]) =>
-    routesList.filter((route) =>
-      route.name?.toLowerCase().includes(search.toLowerCase())
-    );
+    routesList.filter((route) => {
+      const query = search.toLowerCase();
+      return (
+        route.name?.toLowerCase().includes(query) ||
+        route.start_time?.toLowerCase().includes(query) ||
+        route.end_time?.toLowerCase().includes(query) ||
+        terminalsMap[route.start_terminal_id]?.toLowerCase().includes(query) ||
+        terminalsMap[route.end_terminal_id]?.toLowerCase().includes(query)
+      );
+    });
 
   // --- Render Terminals ---
   const renderTerminals = (terminalsArray: any[]) => {
@@ -253,8 +276,8 @@ export function AdminManageTrips() {
         <div className="relative w-full sm:w-[300px]">
           <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name..."
-            className="pl-9"
+            placeholder="Search by route, driver, bus, date, status, or terminal..."
+            className="pl-10"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

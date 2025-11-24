@@ -13,7 +13,6 @@ import {
   SelectItem,
   SelectValue,
 } from "../../ui";
-import MultiSelect from "../../MultiSelect";
 import { adminAPI } from "../../../lib/api";
 import { useState, useEffect } from "react";
 import { Terminal } from "../../../data/types";
@@ -34,23 +33,36 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
     register,
     handleSubmit,
     control,
-    setValue,
     watch,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<TripFormData>({
     resolver: zodResolver(tripSchema),
+    defaultValues: {
+      date: "",
+      schedule: "",
+      driver: "",
+      bus: "",
+      startTerminal: "",
+      stopTerminal: "",
+      middleTerminals: [],
+      startTime: "",
+      endTime: "",
+      type: undefined,
+    },
   });
 
-  const date = watch("date");
-  const startTime = watch("startTime");
-  const endTime = watch("endTime");
-  const scheduleName = watch("schedule");
-  const bus = watch("bus");
-  const driver = watch("driver");
-  const startTerminalName = watch("startTerminal");
-  const stopTerminalName = watch("stopTerminal");
-  const middleTerminalsNames = watch("middleTerminals");
-  const type = watch("type");
+  const selectedMiddleTerminals = watch("middleTerminals") || [];
+
+  const toggleMiddleTerminal = (terminalName: string) => {
+    const current = getValues("middleTerminals") || [];
+    if (current.includes(terminalName)) {
+      setValue("middleTerminals", current.filter((name) => name !== terminalName));
+    } else {
+      setValue("middleTerminals", [...current, terminalName]);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -134,42 +146,48 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
       {/* Driver */}
       <div className="space-y-2">
         <Label>Driver</Label>
-        <Select
-          onValueChange={(v) => setValue("driver", v)}
-          defaultValue=""
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select driver" />
-          </SelectTrigger>
-          <SelectContent>
-            {drivers.map((d) => (
-              <SelectItem key={d.id} value={d.email}>
-                {d.first_name} {d.last_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Controller
+          control={control}
+          name="driver"
+          render={({ field }) => (
+            <Select onValueChange={field.onChange} value={field.value || ""}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select driver" />
+              </SelectTrigger>
+              <SelectContent>
+                {drivers.map((d) => (
+                  <SelectItem key={d.id} value={d.email}>
+                    {d.first_name} {d.last_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.driver && <p className="text-red-500 text-sm">{errors.driver.message}</p>}
       </div>
 
       {/* Bus */}
       <div className="space-y-2">
         <Label>Bus</Label>
-        <Select
-          onValueChange={(v) => setValue("bus", v)}
-          defaultValue=""
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select bus" />
-          </SelectTrigger>
-          <SelectContent>
-            {buses.map((b) => (
-              <SelectItem key={b.id} value={b.plate_num}>
-                {b.plate_num} ({b.model || "No model"})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Controller
+          control={control}
+          name="bus"
+          render={({ field }) => (
+            <Select onValueChange={field.onChange} value={field.value || ""}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select bus" />
+              </SelectTrigger>
+              <SelectContent>
+                {buses.map((b) => (
+                  <SelectItem key={b.id} value={b.plate_num}>
+                    {b.plate_num} ({b.model || "No model"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.bus && <p className="text-red-500 text-sm">{errors.bus.message}</p>}
       </div>
 
@@ -177,56 +195,73 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
       <div className="flex gap-2">
         <div className="flex-1 space-y-2">
           <Label>Start Terminal</Label>
-          <Select
-            onValueChange={(v) => setValue("startTerminal", v)}
-            defaultValue=""
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select start terminal" />
-            </SelectTrigger>
-            <SelectContent>
-              {terminals.map((t) => (
-                <SelectItem key={t.id} value={t.terminalName}>
-                  {t.terminalName} ({t.city})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            control={control}
+            name="startTerminal"
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value || ""}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select start terminal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terminals.map((t) => (
+                    <SelectItem key={t.id} value={t.terminalName}>
+                      {t.terminalName} ({t.city})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div className="flex-1 space-y-2">
           <Label>Stop Terminal</Label>
-          <Select
-            onValueChange={(v) => setValue("stopTerminal", v)}
-            defaultValue=""
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select stop terminal" />
-            </SelectTrigger>
-            <SelectContent>
-              {terminals.map((t) => (
-                <SelectItem key={t.id} value={t.terminalName}>
-                  {t.terminalName} ({t.city})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            control={control}
+            name="stopTerminal"
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value || ""}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select stop terminal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terminals.map((t) => (
+                    <SelectItem key={t.id} value={t.terminalName}>
+                      {t.terminalName} ({t.city})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
       </div>
 
       {/* Middle Terminals */}
       <div className="space-y-2">
         <Label>Middle Terminals</Label>
-        <Controller
-          control={control}
-          name="middleTerminals"
-          render={({ field }) => (
-            <MultiSelect
-              terminals={terminals.map((t) => ({ terminal: t.terminalName, city: t.city }))}
-              field={field}
-            />
-          )}
-        />
+        <div className="flex flex-wrap gap-2">
+          {terminals
+            .filter((t) => 
+              t.terminalName !== watch("startTerminal") && 
+              t.terminalName !== watch("stopTerminal")
+            )
+            .map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => toggleMiddleTerminal(t.terminalName)}
+                className={`px-3 py-1 rounded-lg text-sm border transition-colors ${
+                  selectedMiddleTerminals.includes(t.terminalName)
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-black border-gray-300 hover:border-blue-500"
+                }`}
+              >
+                {t.terminalName} ({t.city})
+              </button>
+            ))}
+        </div>
         {errors.middleTerminals && (
           <p className="text-red-500 text-sm">{errors.middleTerminals.message}</p>
         )}
@@ -247,17 +282,23 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
       {/* Trip Type */}
       <div className="space-y-2">
         <Label>Trip Type</Label>
-        <Select onValueChange={(v) => setValue("type", v as TripFormData["type"])}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select trip type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="regular">Regular</SelectItem>
-            <SelectItem value="academic">Academic</SelectItem>
-            <SelectItem value="sport">Sport</SelectItem>
-            <SelectItem value="Student Life Event">Student Life Event</SelectItem>
-          </SelectContent>
-        </Select>
+        <Controller
+          control={control}
+          name="type"
+          render={({ field }) => (
+            <Select onValueChange={field.onChange} value={field.value || ""}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select trip type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="regular">Regular</SelectItem>
+                <SelectItem value="academic">Academic</SelectItem>
+                <SelectItem value="sport">Sport</SelectItem>
+                <SelectItem value="Student Life Event">Student Life Event</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.type && <p className="text-red-500 text-sm">{errors.type.message}</p>}
       </div>
 

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Search } from "lucide-react";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
+  Input,
   Button,
   Table,
   TableHeader,
@@ -38,6 +39,7 @@ export default function AdminCreateBus() {
   const [selectedBusForTrips, setSelectedBusForTrips] = useState<Bus | null>(null);
   const [busTrips, setBusTrips] = useState<any[]>([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch buses from backend on mount
   useEffect(() => {
@@ -139,6 +141,17 @@ export default function AdminCreateBus() {
     }
   };
 
+  const filteredBuses = buses.filter((bus) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      bus.plate_num?.toLowerCase().includes(query) ||
+      bus.model?.toLowerCase().includes(query) ||
+      bus.manufacturer?.toLowerCase().includes(query) ||
+      bus.status?.toLowerCase().includes(query) ||
+      bus.no_seats?.toString().includes(query)
+    );
+  });
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -152,6 +165,16 @@ export default function AdminCreateBus() {
         <Button onClick={() => setShowCreateBus(true)}>
           <Plus className="w-4 h-4 mr-2" /> Add New Bus
         </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search buses by plate, model, manufacturer, status, or seats..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       <Dialog open={showCreateBus} onOpenChange={setShowCreateBus}>
@@ -179,7 +202,7 @@ export default function AdminCreateBus() {
             </TableHeader>
 
             <TableBody>
-              {buses.map((bus) => (
+              {filteredBuses.map((bus) => (
                 <TableRow key={bus.busID}>
                   <TableCell>{bus.plate_num}</TableCell>
                   <TableCell>{bus.model}</TableCell>

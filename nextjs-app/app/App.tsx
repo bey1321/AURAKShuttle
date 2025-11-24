@@ -26,6 +26,8 @@ import AdminApproveRegistrations from "./components/Admin/AdminApproveregistrati
 import { DriverLiveTracking } from "./components/Driver/DriverLiveTracking";
 import { UserLiveTracking } from "./components/User/UserLiveTracking";
 import { AdminLiveTracking } from "./components/Admin/AdminLiveTracking";
+import AdminFeedback from "./components/Admin/AdminFeedback";
+import { ca } from "zod/v4/locales";
 
 type UserRole = "student" | "driver" | "admin";
 
@@ -116,8 +118,12 @@ export default function App({
         return userRole === "admin" ? <AdminApproveRegistrations /> : null;
       case "admin-live-tracking":
         return userRole === "admin" ? <AdminLiveTracking /> : null;
+      case "admin-feedback":
+        return userRole === "admin" ? <AdminFeedback /> : null;
 
       // 🔹 Driver
+      case "driver-dashboard":
+        return userRole === "driver" ? <DriverDashboard /> : null;
       case "my-trips":
         return userRole === "driver" ? <DriverTrips /> : null;
       case "driver-lost-found":

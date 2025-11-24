@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -64,23 +65,31 @@ export function AdminManageDrivers() {
     }
   };
 
-  const filteredDrivers = drivers.filter((d) =>
-    `${d.first_name} ${d.last_name}`
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const filteredDrivers = drivers.filter((d) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      d.first_name?.toLowerCase().includes(query) ||
+      d.last_name?.toLowerCase().includes(query) ||
+      d.license_num?.toLowerCase().includes(query) ||
+      d.phone?.toLowerCase().includes(query) ||
+      d.status?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-xl font-semibold">Manage Drivers</h1>
 
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <Input
-          placeholder="Search by name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-48"
-        />
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, license, phone, or status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         <Button onClick={() => setShowAddDriver(true)}>+ Add Driver</Button>
       </div>
 
