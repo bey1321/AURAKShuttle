@@ -4,6 +4,14 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 const WEBSOCKET_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
+export interface PathPoint {
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  speed?: number;
+  heading?: number;
+}
+
 export interface LocationData {
   trip_id: number;
   bus_id?: number;
@@ -14,6 +22,8 @@ export interface LocationData {
   heading?: number;
   last_update: string;
   status?: string;
+  path?: PathPoint[];  // Full path history
+  new_point?: PathPoint;  // Single new point to append
 }
 
 export interface WebSocketMessage {
@@ -60,68 +70,96 @@ export function useGPSWebSocket({
   useEffect(() => {
     // Fetch token from API route (which can read HttpOnly cookies server-side)
     // All roles need the token since WebSocket connections don't reliably send cookies
+    console.log(`[GPS WebSocket] Fetching auth token for role: ${role}`);
     fetch("/api/gps-token")
-      .then((res) => res.json())
+      .then((res) => {
+        console.log(`[GPS WebSocket] Token API response status: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         if (data.token) {
+          console.log(`[GPS WebSocket] ✅ Auth token retrieved successfully (length: ${data.token.length})`);
           setAuthToken(data.token);
         } else {
-          console.error("[GPS WebSocket] Failed to get auth token:", data.error);
+          console.error("[GPS WebSocket] ❌ Failed to get auth token:", data.error);
+          setLastError(data.error || "Failed to retrieve authentication token");
         }
         setTokenLoading(false);
       })
       .catch((error) => {
-        console.error("[GPS WebSocket] Error fetching auth token:", error);
+        console.error("[GPS WebSocket] ❌ Error fetching auth token:", error);
+        setLastError("Network error: Could not retrieve authentication token");
         setTokenLoading(false);
       });
   }, [role]);
 
   const connect = useCallback(() => {
-    if (!enabled) return;
+    console.log(`[GPS WebSocket] 🎯 Connect called with:`, { role, tripId, userId, enabled, tokenLoading, hasToken: !!authToken });
+
+    if (!enabled) {
+      console.log(`[GPS WebSocket] ⚠️ Connection disabled`);
+      return;
+    }
 
     // Wait for token to be loaded for all roles
     if (tokenLoading) {
+      console.log(`[GPS WebSocket] ⏳ Waiting for token to load...`);
       return;
     }
 
     // Close existing connection if any
     if (wsRef.current) {
+      console.log(`[GPS WebSocket] 🔄 Closing existing connection`);
       wsRef.current.close();
       wsRef.current = null;
     }
 
     let wsUrl = "";
-    
+
+    console.log(`[GPS WebSocket] 🔍 Checking conditions - role: "${role}", tripId: ${tripId}, condition result: ${role === "student" && !!tripId}`);
+
     if (role === "student" && tripId) {
+      console.log(`[GPS WebSocket] ✅ MATCHED: Student route with tripId ${tripId}`);
       // Student route needs token as query parameter (cookies don't work reliably with WebSocket)
       if (!authToken) {
-        setLastError("Authentication token not found. Please log in.");
+        const errorMsg = "Authentication token not found. Please log in.";
+        console.error(`[GPS WebSocket] ❌ ${errorMsg}`);
+        setLastError(errorMsg);
         setConnectionStatus("error");
-        onError?.("Authentication token not found");
+        onError?.(errorMsg);
         return;
       }
       wsUrl = `${WEBSOCKET_BASE_URL}/gps/ws/student/trip/${tripId}?token=${encodeURIComponent(authToken)}`;
+      console.log(`[GPS WebSocket] ✅ Student WebSocket URL: ${wsUrl.replace(/\?token=.*/, '?token=***')}`);
     } else if (role === "admin") {
+      console.log(`[GPS WebSocket] ✅ MATCHED: Admin route`);
       // Admin needs token as query parameter
       if (!authToken) {
-        setLastError("Authentication token not found. Please log in.");
+        const errorMsg = "Authentication token not found. Please log in.";
+        console.error(`[GPS WebSocket] ❌ ${errorMsg}`);
+        setLastError(errorMsg);
         setConnectionStatus("error");
-        onError?.("Authentication token not found");
+        onError?.(errorMsg);
         return;
       }
       wsUrl = `${WEBSOCKET_BASE_URL}/gps/ws/admin?token=${encodeURIComponent(authToken)}`;
+      console.log(`[GPS WebSocket] Admin connection - WS Base URL: ${WEBSOCKET_BASE_URL}`);
     } else if (role === "driver" && userId) {
       // Driver needs token as query parameter
       if (!authToken) {
-        setLastError("Authentication token not found. Please log in.");
+        const errorMsg = "Authentication token not found. Please log in.";
+        console.error(`[GPS WebSocket] ❌ ${errorMsg}`);
+        setLastError(errorMsg);
         setConnectionStatus("error");
-        onError?.("Authentication token not found");
+        onError?.(errorMsg);
         return;
       }
       wsUrl = `${WEBSOCKET_BASE_URL}/gps/ws/driver/${userId}?token=${encodeURIComponent(authToken)}`;
+      console.log(`[GPS WebSocket] Driver connection - User ID: ${userId}, WS Base URL: ${WEBSOCKET_BASE_URL}`);
     } else {
-      console.warn("Invalid WebSocket configuration for role:", role, { userId, tripId });
-      setLastError(`Invalid configuration: missing ${role === "student" ? "tripId" : "userId"}`);
+      const errorMsg = `Invalid configuration: missing ${role === "student" ? "tripId" : "userId"}`;
+      console.warn(`[GPS WebSocket] ⚠️ Invalid WebSocket configuration for role: ${role}`, { userId, tripId });
+      setLastError(errorMsg);
       setConnectionStatus("error");
       return;
     }
@@ -130,9 +168,10 @@ export function useGPSWebSocket({
     setLastError(null);
 
     const maskedUrl = wsUrl.replace(/\?token=[^&]*/, "?token=***");
-    console.log(`[GPS WebSocket] Connecting to: ${maskedUrl}`);
+    console.log(`[GPS WebSocket] 🔌 Initiating connection to: ${maskedUrl}`);
     console.log(`[GPS WebSocket] Token available: ${authToken ? "Yes" : "No"}`);
     console.log(`[GPS WebSocket] Token length: ${authToken?.length || 0}`);
+    console.log(`[GPS WebSocket] Role: ${role}, Trip ID: ${tripId || "N/A"}, User ID: ${userId || "N/A"}`);
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -288,22 +327,31 @@ export function useGPSWebSocket({
 
   // Connect when enabled and (for admin/driver) when token is loaded
   useEffect(() => {
+    console.log(`[GPS WebSocket] 🔄 useEffect triggered:`, { enabled, tokenLoading, role, tripId, userId });
+
     if (enabled && !tokenLoading) {
+      console.log(`[GPS WebSocket] ⏰ Scheduling connection in 100ms...`);
       // Small delay to ensure token is fully set
       const timeoutId = setTimeout(() => {
+        console.log(`[GPS WebSocket] 🚀 Calling connect() now...`);
         connect();
       }, 100);
-      
+
       return () => {
+        console.log(`[GPS WebSocket] 🧹 Cleanup: clearing timeout and disconnecting`);
         clearTimeout(timeoutId);
         disconnect();
       };
+    } else {
+      console.log(`[GPS WebSocket] ⏸️ Not connecting: enabled=${enabled}, tokenLoading=${tokenLoading}`);
     }
 
     return () => {
+      console.log(`[GPS WebSocket] 🧹 Cleanup: disconnecting (enabled was false)`);
       disconnect();
     };
-  }, [enabled, tokenLoading, connect, disconnect]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, tokenLoading, role, tripId, userId]);
 
   return {
     isConnected,

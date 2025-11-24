@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Bus, Users, Navigation, Clock } from "lucide-react";
+import { MapPin, Bus, Users, Navigation, Clock, Maximize2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,18 +18,21 @@ import {
 } from "../ui";
 import React, { useEffect, useState } from "react";
 import { activeShuttles, routes } from "../../data/database";
-import { AdminGPSComponent } from "../GPS";
+import { AdminGPSComponent, AdminLiveMap } from "../GPS";
 import { adminAPI } from "../../lib/api";
+import type { LocationData } from "../../hooks/useGPSWebSocket";
 
 export function AdminLiveTracking() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedShuttle, setSelectedShuttle] = useState<any>(null);
+  const [showMapDialog, setShowMapDialog] = useState(false);
   // TODO: Get adminId from auth context/session - this component is used by admins
   const adminId = 1; // Replace with actual admin ID from auth
 
   const [trips, setTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState<boolean>(true);
   const [tripsError, setTripsError] = useState<string | null>(null);
+  const [busLocations, setBusLocations] = useState<LocationData[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -128,21 +131,47 @@ export function AdminLiveTracking() {
         </Card>
       </div>
 
-      {/* Real-time GPS Component */}
-      {/* <AdminGPSComponent /> */}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Map View - use AdminGPSComponent to display live feed */}
+        {/* Map View - Shows all active buses */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Live Map</CardTitle>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Live Map</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Real-time tracking of all active buses
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{busLocations.length} Active</Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowMapDialog(true)}
+                  className="gap-2"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                  Expand
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[600px] bg-muted rounded-lg border border-border overflow-hidden">
-              <AdminGPSComponent />
+            <div className="h-[600px] rounded-lg border border-border overflow-hidden">
+              <AdminLiveMap locations={busLocations} height="600px" zoom={13} />
             </div>
           </CardContent>
         </Card>
+
+        {/* GPS Component - Handles WebSocket connection and data */}
+        <div className="hidden">
+          <AdminGPSComponent
+            onLocationUpdate={(locations) => {
+              setBusLocations(locations);
+              console.log("Admin GPS locations updated:", locations);
+            }}
+          />
+        </div>
 
         {/* Shuttle List */}
         <Card>
@@ -405,6 +434,61 @@ export function AdminLiveTracking() {
               })()}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Full-Screen Map Dialog */}
+      <Dialog open={showMapDialog} onOpenChange={setShowMapDialog}>
+        <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Live Bus Tracking Map</DialogTitle>
+                <DialogDescription>
+                  Real-time location of all {busLocations.length} active buses
+                </DialogDescription>
+              </div>
+              <Badge variant="default" className="bg-green-500">
+                <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
+                Live
+              </Badge>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 px-6 pb-6">
+            <div className="h-[calc(95vh-140px)] rounded-lg border border-border overflow-hidden relative">
+              <AdminLiveMap locations={busLocations} height="100%" zoom={13} />
+
+              {/* Map Legend */}
+              <div className="absolute bottom-4 left-4 bg-card p-4 rounded-lg shadow-lg border border-border z-[1000]">
+                <p className="text-sm font-semibold mb-3">Bus Status</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow" />
+                    <span>In Progress</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow" />
+                    <span>Stopped</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow" />
+                    <span>Active</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Buses Counter */}
+              <div className="absolute top-4 right-4 bg-card p-3 rounded-lg shadow-lg border border-border z-[1000]">
+                <div className="flex items-center gap-2">
+                  <Bus className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Active Buses</p>
+                    <p className="text-xl font-bold">{busLocations.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

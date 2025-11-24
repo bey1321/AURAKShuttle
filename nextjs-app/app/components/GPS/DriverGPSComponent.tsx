@@ -23,6 +23,7 @@ import {
   Label,
 } from "../ui";
 import { useGPSWebSocket } from "../../hooks/useGPSWebSocket";
+import { useRouter } from "next/navigation";
 
 interface DriverGPSComponentProps {
   driverId: number;

@@ -11,6 +11,7 @@ import {
   Bell,
   MessageSquare,
 } from "lucide-react";
+import Image from "next/image"
 
 import { Button } from "./ui";
 import React from "react";
@@ -74,14 +75,25 @@ export function Layout({
 
           {/* Logo/Header */}
           <div className="p-6 border-b border-border bg-primary">
-            <div className="flex items-center gap-3">
-              <Bus className="w-8 h-8 text-primary-foreground" />
-              <div>
-                <h1 className="text-primary-foreground">AURAK</h1>
-                <p className="text-sm text-primary-foreground/80">Shuttle Tracker</p>
-              </div>
-            </div>
-          </div>
+  <div className="flex items-center gap-3">
+    <div className="w-8 h-8 relative">
+      <Image 
+        src="/favicon.png" 
+        alt="AURAK Logo" 
+        width={32} 
+        height={32}
+        onError={(e) => {
+          console.error("Failed to load image");
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+    </div>
+    <div>
+      <h1 className="text-primary-foreground">AURAK</h1>
+      <p className="text-sm text-primary-foreground/80">Shuttle Tracker</p>
+    </div>
+  </div>
+</div>
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">

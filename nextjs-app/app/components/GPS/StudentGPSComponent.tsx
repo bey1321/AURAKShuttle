@@ -13,6 +13,9 @@ import {
   AlertDescription,
 } from "../ui";
 import { useGPSWebSocket, LocationData } from "../../hooks/useGPSWebSocket";
+import { LiveTrackingMap } from "./LiveTrackingMap";
+import { WebSocketDebugPanel } from "./WebSocketDebugPanel";
+import { NetworkDebugPanel } from "./NetworkDebugPanel";
 
 interface StudentGPSComponentProps {
   tripId: number;
@@ -28,18 +31,7 @@ export function StudentGPSComponent({
   const [location, setLocation] = useState<LocationData | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  // const [authToken, setAuthToken] = useState<string | null>(null);
-
-  // useEffect(() => {
-  //   if (typeof window !== "undefined") {
-  //     const token = localStorage.getItem("access_token");
-  //     setAuthToken(token);
-  //   }
-  // }, []);
-
-
-
-  const { isConnected, connectionStatus, lastError, sendMessage } =
+  const { isConnected, connectionStatus, lastError, sendMessage, connect } =
     useGPSWebSocket({
       role: "student",
       userId,
@@ -47,19 +39,41 @@ export function StudentGPSComponent({
       enabled: !!tripId,
       onMessage: (message) => {
         if (
-  message.type === "location_update" ||
-  message.type === "initial_location" ||
-  message.type === "bus_location"
-) {
-  const locationData = Array.isArray(message.data)
-    ? message.data[0]
-    : message.data;
+          message.type === "location_update" ||
+          message.type === "initial_location" ||
+          message.type === "bus_location"
+        ) {
+          const locationData = Array.isArray(message.data)
+            ? message.data[0]
+            : message.data;
 
-  setLocation(locationData);
-  setLastUpdate(new Date());
-  onLocationUpdate?.(locationData);
-}
+          // Handle initial location with full path
+          if (message.type === "initial_location" && locationData.path) {
+            console.log(`[Student GPS] Initial location received with ${locationData.path.length} path points`);
+            setLocation(locationData);
+          }
+          // Handle location update with new point to append
+          else if (message.type === "location_update" && locationData.new_point) {
+            console.log(`[Student GPS] Location update with new point`);
+            setLocation((prev) => {
+              if (!prev) return locationData;
 
+              // Append new point to existing path
+              const updatedPath = [...(prev.path || []), locationData.new_point!];
+              return {
+                ...locationData,
+                path: updatedPath,
+              };
+            });
+          }
+          // Fallback for other message types
+          else {
+            setLocation(locationData);
+          }
+
+          setLastUpdate(new Date());
+          onLocationUpdate?.(locationData);
+        }
       },
       onError: (error) => {
         console.error("GPS WebSocket error:", error);
@@ -68,25 +82,55 @@ export function StudentGPSComponent({
 
   const formatTime = (dateString: string) => {
     try {
-      const date = new Date(dateString);
-      return date.toLocaleTimeString("en-US");
-    } catch {
+      // Handle UTC timestamps by appending 'Z' if not present
+      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+      const date = new Date(utcDateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error("[GPS Time] Invalid date string for formatting:", dateString);
+        return "Unknown";
+      }
+
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch (error) {
+      console.error("[GPS Time] Error formatting time:", error, dateString);
       return "Unknown";
     }
   };
 
   const getTimeAgo = (dateString: string) => {
     try {
-      const date = new Date(dateString);
+      // Handle UTC timestamps by appending 'Z' if not present
+      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+      const date = new Date(utcDateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error("[GPS Time] Invalid date string:", dateString);
+        return "Unknown";
+      }
+
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
+
+      // Handle future timestamps (server time ahead of client)
+      if (diffMins < 0) {
+        console.warn("[GPS Time] Future timestamp detected. Server time might be ahead.");
+        return "Just now";
+      }
 
       if (diffMins < 1) return "Just now";
       if (diffMins < 60) return `${diffMins} min ago`;
       const diffHours = Math.floor(diffMins / 60);
       return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    } catch {
+    } catch (error) {
+      console.error("[GPS Time] Error calculating time ago:", error, dateString);
       return "Unknown";
     }
   };
@@ -139,19 +183,8 @@ export function StudentGPSComponent({
 
         {location ? (
           <div className="space-y-4">
-            {/* Map Placeholder */}
-            <div className="h-64 bg-muted rounded-lg border border-border relative overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-12 h-12 text-primary mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">GPS Location</p>
-                </div>
-              </div>
-              {/* Bus Marker */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                <Bus className="w-6 h-6 text-primary-foreground" />
-              </div>
-            </div>
+            {/* Live Tracking Map */}
+            <LiveTrackingMap location={location} height="300px" zoom={15} showPopup={true} />
 
             {/* Location Details */}
             <div className="grid grid-cols-2 gap-4">
@@ -212,6 +245,19 @@ export function StudentGPSComponent({
             </p>
           </div>
         )}
+
+        {/* Debug Panel - Shows connection diagnostics */}
+        <div className="mt-4">
+          <WebSocketDebugPanel
+            isConnected={isConnected}
+            connectionStatus={connectionStatus}
+            lastError={lastError}
+            onRetry={connect}
+          />
+        </div>
+
+        {/* Network Debug Panel - Shows detailed logs */}
+        <NetworkDebugPanel />
       </CardContent>
     </Card>
   );

@@ -18,8 +18,9 @@ import {
 } from "../ui";
 import React, { useState, useEffect } from "react";
 import { activeShuttles } from "../../data/database";
-import { StudentGPSComponent } from "../GPS";
+import { StudentGPSComponent, LiveTrackingMap } from "../GPS";
 import { tripAPI } from "../../lib/api";
+import type { LocationData } from "../../hooks/useGPSWebSocket";
 
 export function UserLiveTracking() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -28,6 +29,31 @@ export function UserLiveTracking() {
   const [myTrips, setMyTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState<boolean>(true);
   const [tripsError, setTripsError] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+  const [isTracking, setIsTracking] = useState(false); // Track if user clicked "Live Track"
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Get user's location on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Error getting user location:", error);
+          // Set default location (RAK, UAE) if geolocation fails
+          setUserLocation({ lat: 25.7617, lng: 55.9777 });
+        }
+      );
+    } else {
+      // Set default location if geolocation not available
+      setUserLocation({ lat: 25.7617, lng: 55.9777 });
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -141,12 +167,23 @@ export function UserLiveTracking() {
         {/* Map View */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Live Map</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Live Map</CardTitle>
+              {currentLocation && (
+                <Badge variant="default" className="bg-green-500">
+                  <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
+                  Tracking: {currentLocation.bus_number || "Bus"}
+                </Badge>
+              )}
+            </div>
             <div className="ml-4">
               <label className="text-sm text-muted-foreground mr-2">Track Shuttle:</label>
               <select
                 value={selectedTripId ?? ""}
-                onChange={(e) => setSelectedTripId(Number(e.target.value))}
+                onChange={(e) => {
+                  setSelectedTripId(Number(e.target.value));
+                  setCurrentLocation(null); // Reset location when changing dropdown
+                }}
                 className="border border-border rounded px-2 py-1 text-sm"
               >
                 {tripsLoading ? (
@@ -171,77 +208,91 @@ export function UserLiveTracking() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[600px] bg-muted rounded-lg border border-border relative overflow-hidden">
-              {/* Map Placeholder with styled elements */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-16 h-16 text-primary mx-auto mb-4" />
-                  <h3 className="mb-2">Interactive Map</h3>
-                  <p className="text-muted-foreground">
-                    Real-time GPS tracking would display here
-                  </p>
+            <div className="relative">
+              {currentLocation && isTracking ? (
+                <>
+                  {/* Bus Tracking Map */}
+                  <LiveTrackingMap location={currentLocation} height="600px" zoom={15} showPopup={true} />
+
+                  {/* Map Legend */}
+                  <div className="absolute bottom-4 left-4 bg-card p-4 rounded-lg shadow-lg border border-border z-[1000]">
+                    <p className="text-sm font-semibold mb-2">Bus Status</p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                        <span>Moving</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-red-500 rounded-full" />
+                        <span>Stopped</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full" />
+                        <span>Active</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : userLocation ? (
+                <>
+                  {/* User Location Map */}
+                  <LiveTrackingMap
+                    location={{
+                      trip_id: 0,
+                      latitude: userLocation.lat,
+                      longitude: userLocation.lng,
+                      speed: 0,
+                      heading: 0,
+                      last_update: new Date().toISOString(),
+                      status: "idle",
+                      bus_number: "Your Location",
+                    }}
+                    height="600px"
+                    zoom={13}
+                    showPopup={false}
+                  />
+
+                  {/* Info overlay */}
+                  <div className="absolute bottom-4 left-4 bg-card p-4 rounded-lg shadow-lg border border-border z-[1000]">
+                    <p className="text-sm font-semibold mb-2">📍 Your Location</p>
+                    <p className="text-xs text-muted-foreground">Click &quot;Live Track&quot; on a shuttle to track it</p>
+                  </div>
+                </>
+              ) : (
+                <div className="h-[600px] bg-muted rounded-lg border border-border relative overflow-hidden flex items-center justify-center">
+                  <div className="text-center">
+                    <MapPin className="w-16 h-16 text-primary mx-auto mb-4" />
+                    <h3 className="mb-2">Loading Map...</h3>
+                    <p className="text-muted-foreground">Getting your location...</p>
+                    <div className="mt-4">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Simulated shuttle markers */}
-              <div className="absolute top-1/4 left-1/3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                <Bus className="w-6 h-6 text-primary-foreground" />
-              </div>
-
-              <div className="absolute top-1/2 left-1/2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                <Bus className="w-6 h-6 text-primary-foreground" />
-              </div>
-
-              <div className="absolute top-2/3 left-2/3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                <Bus className="w-6 h-6 text-primary-foreground" />
-              </div>
-
-              {/* Map Controls */}
-              <div className="absolute top-4 right-4 space-y-2">
-                <Button size="sm" variant="secondary" className="w-10 h-10 p-0">
-                  +
-                </Button>
-                <Button size="sm" variant="secondary" className="w-10 h-10 p-0">
-                  -
-                </Button>
-              </div>
-
-              {/* Legend */}
-              <div className="absolute bottom-4 left-4 bg-card p-4 rounded-lg shadow-lg border border-border">
-                <p className="text-sm mb-2">Legend</p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full" />
-                    <span>Available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                    <span>Half Full</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full" />
-                    <span>Full</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Student GPS Panel */}
         <div className="lg:col-span-1">
-          {selectedTripId ? (
+          {selectedTripId && isTracking ? (
             <StudentGPSComponent
               tripId={selectedTripId}
               onLocationUpdate={(loc) => {
-                // Optionally update UI or show toast when location updates
+                // Update location state to show on main map
+                setCurrentLocation(loc);
                 console.log("Student GPS location update:", loc);
               }}
             />
           ) : (
             <Card>
-              <CardContent>
-                <p className="text-muted-foreground">No shuttle selected for live tracking.</p>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground">
+                  {selectedTripId
+                    ? "Click 'Live Track' to start tracking this shuttle"
+                    : "No shuttle selected for live tracking."}
+                </p>
               </CardContent>
             </Card>
           )}
@@ -256,7 +307,11 @@ export function UserLiveTracking() {
             {activeShuttles.map((shuttle) => (
               <div
                 key={shuttle.id}
-                className="p-4 border border-border rounded-lg space-y-3 hover:bg-accent transition-colors cursor-pointer"
+                className={`p-4 border rounded-lg space-y-3 hover:bg-accent transition-colors ${
+                  isTracking && selectedTripId === shuttle.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border"
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
@@ -333,17 +388,32 @@ export function UserLiveTracking() {
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs"
-                  onClick={() => {
-                    setSelectedShuttle(shuttle);
-                    setShowDetailsDialog(true);
-                  }}
-                >
-                  View Details
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={isTracking && selectedTripId === shuttle.id ? "default" : "outline"}
+                    className="flex-1 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent card click
+                      setSelectedTripId(shuttle.id);
+                      setIsTracking(true); // Enable WebSocket tracking
+                      setCurrentLocation(null); // Reset location when switching trips
+                    }}
+                  >
+                    {isTracking && selectedTripId === shuttle.id ? "Tracking" : "Live Track"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs"
+                    onClick={() => {
+                      setSelectedShuttle(shuttle);
+                      setShowDetailsDialog(true);
+                    }}
+                  >
+                    Details
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>

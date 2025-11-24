@@ -47,10 +47,10 @@ export function AdminGPSComponent({
         setLocations((prev) => {
           const updated = new Map(prev);
           updated.set(locationData.trip_id, locationData);
+          setLastUpdate(new Date());
+          onLocationUpdate?.(Array.from(updated.values()));
           return updated;
         });
-        setLastUpdate(new Date());
-        onLocationUpdate?.(Array.from(locations.values()));
       }
     },
     onError: (error) => {
@@ -60,25 +60,55 @@ export function AdminGPSComponent({
 
   const formatTime = (dateString: string) => {
     try {
-      const date = new Date(dateString);
-      return date.toLocaleTimeString();
-    } catch {
+      // Handle UTC timestamps by appending 'Z' if not present
+      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+      const date = new Date(utcDateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error("[Admin GPS Time] Invalid date string for formatting:", dateString);
+        return "Unknown";
+      }
+
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch (error) {
+      console.error("[Admin GPS Time] Error formatting time:", error, dateString);
       return "Unknown";
     }
   };
 
   const getTimeAgo = (dateString: string) => {
     try {
-      const date = new Date(dateString);
+      // Handle UTC timestamps by appending 'Z' if not present
+      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+      const date = new Date(utcDateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error("[Admin GPS Time] Invalid date string:", dateString);
+        return "Unknown";
+      }
+
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
+
+      // Handle future timestamps (server time ahead of client)
+      if (diffMins < 0) {
+        console.warn("[Admin GPS Time] Future timestamp detected.");
+        return "Just now";
+      }
 
       if (diffMins < 1) return "Just now";
       if (diffMins < 60) return `${diffMins} min ago`;
       const diffHours = Math.floor(diffMins / 60);
       return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    } catch {
+    } catch (error) {
+      console.error("[Admin GPS Time] Error calculating time ago:", error, dateString);
       return "Unknown";
     }
   };
