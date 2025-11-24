@@ -190,7 +190,6 @@ export function AdminManageUsers() {
                   <TableHead>First Name</TableHead>
                   <TableHead>Last Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>UserSchoolID</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -201,7 +200,6 @@ export function AdminManageUsers() {
                     <TableCell>{user.firstName}</TableCell>
                     <TableCell>{user.lastName}</TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.UserSchoolID}</TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell className="flex gap-2">
                       <Button

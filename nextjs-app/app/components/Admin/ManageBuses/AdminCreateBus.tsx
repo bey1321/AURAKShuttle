@@ -40,6 +40,7 @@ export default function AdminCreateBus() {
   const [busTrips, setBusTrips] = useState<any[]>([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [busTripCounts, setBusTripCounts] = useState<{[key: number]: number}>({});
 
   // Fetch buses from backend on mount
   useEffect(() => {
@@ -58,6 +59,23 @@ export default function AdminCreateBus() {
         }));
 
         setBuses(mappedBuses);
+        
+        // Load trip counts for each bus
+        const counts: {[key: number]: number} = {};
+        await Promise.all(
+          mappedBuses.map(async (bus) => {
+            try {
+              const trips = await adminAPI.getBusTrips(bus.busID);
+              console.log(`Bus ${bus.busID} (${bus.plate_num}) trips:`, trips);
+              counts[bus.busID] = Array.isArray(trips) ? trips.length : 0;
+            } catch (err) {
+              console.error(`Failed to load trips for bus ${bus.busID}:`, err);
+              counts[bus.busID] = 0;
+            }
+          })
+        );
+        console.log('Final trip counts:', counts);
+        setBusTripCounts(counts);
       } catch (err: any) {
         console.error(err);
         alert(err?.message || "Server error while fetching buses");
@@ -130,10 +148,12 @@ export default function AdminCreateBus() {
     setSelectedBusForTrips(bus);
     try {
       setLoadingTrips(true);
+      console.log(`Fetching trips for bus ${bus.busID}...`);
       const trips = await adminAPI.getBusTrips(bus.busID);
-      setBusTrips(trips);
+      console.log('Fetched bus trips:', trips);
+      setBusTrips(Array.isArray(trips) ? trips : []);
     } catch (err: any) {
-      console.error(err);
+      console.error('Error fetching bus trips:', err);
       alert(err?.message || "Failed to load bus trips");
       setBusTrips([]);
     } finally {
@@ -196,7 +216,9 @@ export default function AdminCreateBus() {
                 <TableHead>Plate Number</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>Manufacturer</TableHead>
+                <TableHead>Seats</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Assigned Trips</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -207,13 +229,21 @@ export default function AdminCreateBus() {
                   <TableCell>{bus.plate_num}</TableCell>
                   <TableCell>{bus.model}</TableCell>
                   <TableCell>{bus.manufacturer}</TableCell>
+                  <TableCell>{bus.no_seats}</TableCell>
                   <TableCell>
                     <Badge
                       variant={bus.status === "Active" ? "default" : "outline"}
-                      className="cursor-pointer hover:opacity-80"
-                      onClick={() => handleViewBusTrips(bus)}
                     >
                       {bus.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() => handleViewBusTrips(bus)}
+                    >
+                      {busTripCounts[bus.busID] ?? 0} trips
                     </Badge>
                   </TableCell>
                   <TableCell className="flex gap-2">
@@ -264,57 +294,113 @@ export default function AdminCreateBus() {
         open={!!selectedBusForTrips}
         onOpenChange={(open) => !open && setSelectedBusForTrips(null)}
       >
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              Trips Assigned to Bus: {selectedBusForTrips?.plate_num}
+            <DialogTitle className="text-2xl">
+              Trips for {selectedBusForTrips?.plate_num}
             </DialogTitle>
             <DialogDescription>
-              All trips assigned to this bus
+              {selectedBusForTrips?.model} • {selectedBusForTrips?.manufacturer} • {selectedBusForTrips?.no_seats} seats
             </DialogDescription>
           </DialogHeader>
           {loadingTrips ? (
-            <p className="text-muted-foreground">Loading trips...</p>
+            <div className="flex items-center justify-center py-12">
+              <p className="text-muted-foreground">Loading trips...</p>
+            </div>
           ) : busTrips.length === 0 ? (
-            <p className="text-muted-foreground">
-              No trips assigned to this bus.
-            </p>
+            <div className="text-center py-12">
+              <p className="text-muted-foreground text-lg">No trips assigned to this bus yet.</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Trip ID</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Route</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {busTrips.map((trip: any) => (
-                  <TableRow key={trip.id}>
-                    <TableCell>{trip.id}</TableCell>
-                    <TableCell>
-                      {new Date(trip.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          trip.status === "scheduled" ||
-                          trip.status === "upcoming"
-                            ? "default"
-                            : "outline"
-                        }
-                      >
-                        {trip.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {trip.route?.name || trip.route_id || "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="space-y-6">
+              {/* Semester-wide Trips Section */}
+              {busTrips.filter((trip: any) => trip.route).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-primary rounded-full"></span>
+                    Semester-Wide Routes
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {busTrips
+                      .filter((trip: any) => trip.route)
+                      .map((trip: any) => (
+                        <Card key={trip.id} className="hover:shadow-lg transition-shadow">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h4 className="font-bold text-base">{trip.route?.name || 'Route'}</h4>
+                                <p className="text-sm text-muted-foreground">Trip #{trip.id}</p>
+                              </div>
+                              <Badge variant={trip.status === "scheduled" || trip.status === "upcoming" ? "default" : "outline"}>
+                                {trip.status}
+                              </Badge>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Date:</span>
+                                <span>{new Date(trip.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                              </div>
+                              {trip.route?.start_time && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Time:</span>
+                                  <span>{trip.route.start_time} - {trip.route.end_time || 'N/A'}</span>
+                                </div>
+                              )}
+                              {trip.driver && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Driver:</span>
+                                  <span>{trip.driver.first_name} {trip.driver.last_name}</span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Single Trips Section */}
+              {busTrips.filter((trip: any) => !trip.route).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <span className="w-1 h-6 bg-blue-500 rounded-full"></span>
+                    Single Trips
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {busTrips
+                      .filter((trip: any) => !trip.route)
+                      .map((trip: any) => (
+                        <Card key={trip.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h4 className="font-bold text-base">Single Trip</h4>
+                                <p className="text-sm text-muted-foreground">Trip #{trip.id}</p>
+                              </div>
+                              <Badge variant={trip.status === "scheduled" || trip.status === "upcoming" ? "default" : "outline"}>
+                                {trip.status}
+                              </Badge>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Date:</span>
+                                <span>{new Date(trip.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                              </div>
+                              {trip.driver && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Driver:</span>
+                                  <span>{trip.driver.first_name} {trip.driver.last_name}</span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
