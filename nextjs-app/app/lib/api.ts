@@ -395,6 +395,28 @@ export const tripAPI = {
 /* ---------------------- DRIVER ---------------------- */
 export const driverAPI = {
   getMyTrips: () => apiCall<any[]>("/driver/my_trips"),
+  sendNotification: (data: {
+    trip_id: number;
+    message_type: "arriving_10_min" | "departing_3_min" | "running_late" | "custom";
+    custom_message?: string;
+  }) =>
+    apiCall<{
+      message: string;
+      trip_id: number;
+      recipients_count: number;
+      failed_count: number;
+    }>("/driver/send_notification", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  completeTrip: (tripId: number) =>
+    apiCall<{
+      message: string;
+      trip_id: number;
+      status: string;
+    }>(`/driver/complete_trip/${tripId}`, {
+      method: "POST",
+    }),
 };
 
 /* ---------------------- LOST & FOUND ---------------------- */

@@ -28,12 +28,14 @@ import { useRouter } from "next/navigation";
 interface DriverGPSComponentProps {
   driverId: number;
   tripId?: number;
+  isTrackingActive: boolean;
   onLocationSent?: (success: boolean) => void;
 }
 
 export function DriverGPSComponent({
   driverId,
   tripId,
+  isTrackingActive,
   onLocationSent,
 }: DriverGPSComponentProps) {
   const [isTracking, setIsTracking] = useState(false);
@@ -47,12 +49,17 @@ export function DriverGPSComponent({
     useState<GeolocationPosition | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { isConnected, connectionStatus, lastError, sendMessage } =
+  // Update currentTripId when tripId prop changes
+  useEffect(() => {
+    setCurrentTripId(tripId);
+  }, [tripId]);
+
+  const { isConnected, connectionStatus, lastError, sendMessage, disconnect } =
     useGPSWebSocket({
       role: "driver",
       userId: driverId,
       tripId: currentTripId,
-      enabled: !!currentTripId, // Enable when trip is selected, connection will be established
+      enabled: isTrackingActive && !!currentTripId, // Only enable when tracking is active AND trip is selected
     });
 
   const sendLocationUpdate = (position: GeolocationPosition) => {
@@ -135,11 +142,39 @@ export function DriverGPSComponent({
     }
   };
 
+  // Auto-start/stop tracking based on isTrackingActive prop
+  useEffect(() => {
+    if (isTrackingActive && currentTripId && !isTracking) {
+      startTracking();
+    } else if (!isTrackingActive && isTracking) {
+      stopTracking();
+    }
+  }, [isTrackingActive, currentTripId]);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopTracking();
     };
   }, []);
+
+  // Handle tab close/refresh - ensure WebSocket is disconnected
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (isConnected) {
+        disconnect();
+      }
+      if (isTracking) {
+        stopTracking();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isConnected, isTracking, disconnect]);
 
   const formatTime = (date: Date | null) => {
     if (!date) return "Never";
@@ -153,7 +188,7 @@ export function DriverGPSComponent({
           <div>
             <CardTitle>GPS Location Sharing</CardTitle>
             <CardDescription>
-              Share your real-time location with students
+              Real-time location sharing status
             </CardDescription>
           </div>
           <Badge
@@ -174,23 +209,15 @@ export function DriverGPSComponent({
               }`}
             />
             <div>
-              <p className="text-sm font-medium">Connection</p>
+              <p className="text-sm font-medium">WebSocket Connection</p>
               <p className="text-xs text-muted-foreground">
                 {isConnected ? "Connected" : connectionStatus}
               </p>
             </div>
           </div>
-          <Switch
-            checked={isTracking}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                startTracking();
-              } else {
-                stopTracking();
-              }
-            }}
-            disabled={!isConnected || !currentTripId}
-          />
+          <Badge variant={isConnected ? "default" : "outline"}>
+            {isConnected ? "Active" : "Inactive"}
+          </Badge>
         </div>
 
         {/* Errors */}
@@ -201,22 +228,14 @@ export function DriverGPSComponent({
           </Alert>
         )}
 
-        {/* Trip ID Input */}
-        {!tripId && (
-          <div className="space-y-2">
-            <Label htmlFor="trip-id">Trip ID</Label>
-            <input
-              id="trip-id"
-              type="number"
-              value={currentTripId || ""}
-              onChange={(e) =>
-                setCurrentTripId(Number(e.target.value) || undefined)
-              }
-              placeholder="Enter trip ID"
-              className="w-full px-3 py-2 border border-border rounded-md"
-              disabled={isTracking}
-            />
-          </div>
+        {/* Trip Status */}
+        {!currentTripId && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              No trip selected. Please select a trip from the left panel.
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Current Location Info */}
@@ -263,35 +282,22 @@ export function DriverGPSComponent({
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            onClick={isTracking ? stopTracking : startTracking}
-            disabled={!isConnected || !currentTripId}
-            className="flex-1"
-            variant={isTracking ? "destructive" : "default"}
-          >
-            {isTracking ? (
-              <>
-                <MapPin className="w-4 h-4 mr-2" />
-                Stop Sharing
-              </>
-            ) : (
-              <>
-                <MapPin className="w-4 h-4 mr-2" />
-                Start Sharing
-              </>
-            )}
-          </Button>
-        </div>
-
         {/* Info Message */}
         {isTracking && (
           <Alert>
+            <MapPin className="h-4 w-4" />
+            <AlertDescription>
+              Your location is being shared with students in real-time.
+              Click "End Trip" to stop sharing your location.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isTrackingActive && currentTripId && (
+          <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Your location is being shared with students in real-time. Make
-              sure GPS is enabled on your device.
+              Click "Start Trip" in the left panel to begin tracking.
             </AlertDescription>
           </Alert>
         )}

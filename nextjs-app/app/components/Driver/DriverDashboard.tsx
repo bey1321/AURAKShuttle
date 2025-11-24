@@ -1,19 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { assignedTrips } from "../../data/database";
 import {
   Bus,
   MapPin,
   Bell,
   Clock,
   Users,
-  Send,
   CheckCircle,
   Calendar,
   ChevronDown,
   ChevronUp,
   Circle,
+  Navigation,
 } from "lucide-react";
 import { driverAPI } from "../../lib/api";
 import {
@@ -24,21 +23,16 @@ import {
   CardTitle,
   Button,
   Badge,
-  Textarea,
-  Label,
-  Switch,
 } from "../ui";
-import { DriverGPSComponent } from "../GPS";
+import { DriverNotification } from "./DriverNotification";
+import { useRouter } from "next/navigation";
 
 export function DriverDashboard() {
-  const [alertMessage, setAlertMessage] = useState("");
-  const [gpsEnabled, setGpsEnabled] = useState(true);
-  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTrip, setExpandedTrip] = useState<number | null>(null);
-  // TODO: Get driverId from auth context/session
-  const driverId = 2; // Replace with actual driver ID from auth
+  const [endingTripId, setEndingTripId] = useState<number | null>(null);
+  const router = useRouter();
 
   const today = new Date().toISOString().split("T")[0];
   const todaysTrips = trips.filter(
@@ -49,34 +43,54 @@ export function DriverDashboard() {
   );
 
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const t = await driverAPI.getMyTrips();
-        // Sort trips: semester-wide first, then by date
-        const sortedTrips = t.sort((a: any, b: any) => {
-          const aIsSemester = a.route?.type?.toLowerCase().includes("semester");
-          const bIsSemester = b.route?.type?.toLowerCase().includes("semester");
-          if (aIsSemester && !bIsSemester) return -1;
-          if (!aIsSemester && bIsSemester) return 1;
-          const dateA = new Date(a.date).getTime();
-          const dateB = new Date(b.date).getTime();
-          return dateA - dateB;
-        });
-        setTrips(sortedTrips);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchTrips();
   }, []);
 
-  const handleSendAlert = () => {
-    if (alertMessage.trim()) {
-      // Mock alert send
-      // Alert sent to all passengers!
-      setAlertMessage("");
+  const fetchTrips = async () => {
+    try {
+      setLoading(true);
+      const t = await driverAPI.getMyTrips();
+      // Sort trips: semester-wide first, then by date
+      const sortedTrips = t.sort((a: any, b: any) => {
+        const aIsSemester = a.route?.type?.toLowerCase().includes("semester");
+        const bIsSemester = b.route?.type?.toLowerCase().includes("semester");
+        if (aIsSemester && !bIsSemester) return -1;
+        if (!aIsSemester && bIsSemester) return 1;
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
+      setTrips(sortedTrips);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartTrip = (tripId: number) => {
+    // Navigate to Live Tracking page
+    router.push(`/driver/live-tracking?tripId=${tripId}`);
+  };
+
+  const handleUpdateLocation = (tripId: number) => {
+    // Navigate to Live Tracking page for the in-progress trip
+    router.push(`/driver/live-tracking?tripId=${tripId}`);
+  };
+
+  const handleEndTrip = async (tripId: number) => {
+    try {
+      setEndingTripId(tripId);
+      await driverAPI.completeTrip(tripId);
+      // Refresh trips list
+      await fetchTrips();
+      // Show success message
+      alert("Trip completed successfully!");
+    } catch (error) {
+      console.error("Error completing trip:", error);
+      alert("Failed to complete trip. Please try again.");
+    } finally {
+      setEndingTripId(null);
     }
   };
 
@@ -266,9 +280,10 @@ export function DriverDashboard() {
                                 size="lg"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedTripId(trip.id);
+                                  handleStartTrip(trip.id);
                                 }}
                               >
+                                <Navigation className="w-4 h-4 mr-2" />
                                 Start Trip
                               </Button>
                             )}
@@ -279,20 +294,24 @@ export function DriverDashboard() {
                                   size="lg"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedTripId(trip.id);
+                                    handleUpdateLocation(trip.id);
                                   }}
                                 >
-                                  Update Location
+                                  <MapPin className="w-4 h-4 mr-2" />
+                                  Go to Tracking
                                 </Button>
                                 <Button
                                   className="flex-1"
-                                  variant="outline"
+                                  variant="destructive"
                                   size="lg"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    handleEndTrip(trip.id);
                                   }}
+                                  disabled={endingTripId === trip.id}
                                 >
-                                  End Trip
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  {endingTripId === trip.id ? "Ending..." : "End Trip"}
                                 </Button>
                               </div>
                             )}
@@ -434,9 +453,10 @@ export function DriverDashboard() {
                                 size="lg"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedTripId(trip.id);
+                                  handleStartTrip(trip.id);
                                 }}
                               >
+                                <Navigation className="w-4 h-4 mr-2" />
                                 Start Trip
                               </Button>
                             )}
@@ -447,20 +467,24 @@ export function DriverDashboard() {
                                   size="lg"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedTripId(trip.id);
+                                    handleUpdateLocation(trip.id);
                                   }}
                                 >
-                                  Update Location
+                                  <MapPin className="w-4 h-4 mr-2" />
+                                  Go to Tracking
                                 </Button>
                                 <Button
                                   className="flex-1"
-                                  variant="outline"
+                                  variant="destructive"
                                   size="lg"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    handleEndTrip(trip.id);
                                   }}
+                                  disabled={endingTripId === trip.id}
                                 >
-                                  End Trip
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  {endingTripId === trip.id ? "Ending..." : "End Trip"}
                                 </Button>
                               </div>
                             )}
@@ -480,73 +504,10 @@ export function DriverDashboard() {
             </CardContent>
           </Card>
         </div>
-  
-          {/* Send Alert */}
+
+          {/* Send Notification */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Send Alert</CardTitle>
-              <CardDescription>
-                Notify passengers about delays or issues
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="alert-message">Alert Message</Label>
-                <Textarea
-                  id="alert-message"
-                  placeholder="E.g., Running 10 minutes late due to traffic..."
-                  value={alertMessage}
-                  onChange={(e) => setAlertMessage(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              <Button onClick={handleSendAlert} className="w-full">
-                <Send className="w-4 h-4 mr-2" />
-                Send Alert to Passengers
-              </Button>
-
-              {/* Quick Alert Templates */}
-              <div className="space-y-2">
-                <p className="text-sm">Quick templates:</p>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start text-left"
-                    onClick={() =>
-                      setAlertMessage("Running 10 minutes late due to traffic")
-                    }
-                  >
-                    Delayed by 10 minutes
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start text-left"
-                    onClick={() =>
-                      setAlertMessage("Route changed due to road closure")
-                    }
-                  >
-                    Route change
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start text-left"
-                    onClick={() =>
-                      setAlertMessage(
-                        "Shuttle is full. Next shuttle in 30 minutes"
-                      )
-                    }
-                  >
-                    Shuttle full
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <DriverNotification trips={trips} />
         </div>
       </div>
 

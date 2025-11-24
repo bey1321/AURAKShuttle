@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Bus, Users, Navigation, Clock } from "lucide-react";
+import { MapPin, Bus, Users, Navigation, Clock, ChevronDown, CheckCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -15,22 +15,118 @@ import {
   DialogTitle,
   Label,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "../ui";
 import React, { useState, useEffect, useRef } from "react";
-import { activeShuttles, routes } from "../../data/database";
+import { driverAPI } from "../../lib/api";
 import { DriverGPSComponent } from "../GPS";
+import { useSearchParams } from "next/navigation";
 
 export function DriverLiveTracking() {
+  const searchParams = useSearchParams();
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedShuttle, setSelectedShuttle] = useState<any>(null);
-  // TODO: Get driverId and tripId from auth context/session
+  // TODO: Get driverId from auth context/session
   const driverId = 2; // Replace with actual driver ID from auth
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
-  
+  const [trips, setTrips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isTrackingActive, setIsTrackingActive] = useState(false);
+  const [completingTrip, setCompletingTrip] = useState(false);
+
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
   const geoWatchRef = useRef<number | null>(null);
+
+  // Fetch driver trips
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const driverTrips = await driverAPI.getMyTrips();
+        // Filter for scheduled and in_progress trips only
+        const activeTrips = driverTrips.filter(
+          (trip: any) => trip.status === 'scheduled' || trip.status === 'in_progress'
+        );
+        setTrips(activeTrips);
+
+        // Check if tripId is in URL params and set it
+        const tripIdParam = searchParams.get('tripId');
+        if (tripIdParam) {
+          const tripId = Number(tripIdParam);
+          const tripExists = activeTrips.find((t: any) => t.id === tripId);
+          if (tripExists) {
+            setSelectedTripId(tripId);
+            // If the trip is already in_progress, auto-start tracking
+            if (tripExists.status === 'in_progress') {
+              setIsTrackingActive(true);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching driver trips:", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [searchParams]);
+
+  // Handle ending trip
+  const handleEndTrip = async () => {
+    if (!selectedTripId) return;
+
+    try {
+      setCompletingTrip(true);
+
+      // Call backend to mark trip as completed
+      await driverAPI.completeTrip(selectedTripId);
+
+      // Stop tracking (this will close the WebSocket connection)
+      setIsTrackingActive(false);
+
+      // Refresh the trips list to update status
+      const driverTrips = await driverAPI.getMyTrips();
+      const activeTrips = driverTrips.filter(
+        (trip: any) => trip.status === 'scheduled' || trip.status === 'in_progress'
+      );
+      setTrips(activeTrips);
+
+      // Clear selected trip if it's no longer active
+      if (!activeTrips.find((t: any) => t.id === selectedTripId)) {
+        setSelectedTripId(null);
+      }
+    } catch (error) {
+      console.error("Error completing trip:", error);
+      alert("Failed to complete trip. Please try again.");
+    } finally {
+      setCompletingTrip(false);
+    }
+  };
+
+  // Handle cleanup on tab close/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isTrackingActive) {
+        // Stop tracking when closing the tab
+        setIsTrackingActive(false);
+        // Show confirmation dialog
+        e.preventDefault();
+        e.returnValue = "You have an active trip. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isTrackingActive]);
 
   // Leaflet map initialization
   useEffect(() => {
@@ -265,11 +361,114 @@ export function DriverLiveTracking() {
         </Card>
       </div>
 
-      {/* GPS Tracking Component */}
-      <div className="px-6">
+      {/* Trip Selection and GPS Tracking */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Trip Selection Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Trip to Track</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Choose a trip from your schedule to start tracking
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <div className="text-sm text-muted-foreground">Loading trips...</div>
+            ) : trips.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No active trips available.</div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="trip-select">Select Trip</Label>
+                  <Select
+                    value={selectedTripId?.toString() || ""}
+                    onValueChange={(value) => setSelectedTripId(Number(value))}
+                    disabled={isTrackingActive}
+                  >
+                    <SelectTrigger id="trip-select">
+                      <SelectValue placeholder="Choose a trip" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trips.map((trip) => (
+                        <SelectItem key={trip.id} value={trip.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <span>{trip.route?.name || `Trip ${trip.id}`}</span>
+                            <span className="text-xs text-muted-foreground">
+                              • {new Date(trip.date).toLocaleDateString()} • {trip.route?.start_time || 'N/A'}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedTripId && (
+                  <div className="p-4 bg-accent rounded-lg space-y-2">
+                    {trips.find((t) => t.id === selectedTripId) && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">
+                            {trips.find((t) => t.id === selectedTripId)?.route?.name}
+                          </p>
+                          <Badge variant={isTrackingActive ? "default" : "secondary"}>
+                            {isTrackingActive ? "Active" : "Not Started"}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p>
+                            <strong>Date:</strong>{" "}
+                            {new Date(trips.find((t) => t.id === selectedTripId)?.date).toLocaleDateString()}
+                          </p>
+                          <p>
+                            <strong>Time:</strong>{" "}
+                            {trips.find((t) => t.id === selectedTripId)?.route?.start_time} -{" "}
+                            {trips.find((t) => t.id === selectedTripId)?.route?.end_time}
+                          </p>
+                          <p>
+                            <strong>Bus:</strong>{" "}
+                            {trips.find((t) => t.id === selectedTripId)?.bus?.plate_num || "N/A"}
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  {!isTrackingActive ? (
+                    <Button
+                      onClick={() => setIsTrackingActive(true)}
+                      disabled={!selectedTripId || loading}
+                      className="flex-1"
+                      size="lg"
+                    >
+                      <Navigation className="w-4 h-4 mr-2" />
+                      Start Trip
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleEndTrip}
+                      variant="destructive"
+                      className="flex-1"
+                      size="lg"
+                      disabled={completingTrip}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {completingTrip ? "Ending..." : "End Trip"}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* GPS Tracking Component */}
         <DriverGPSComponent
           driverId={driverId}
-          tripId={selectedTripId}
+          tripId={selectedTripId || undefined}
+          isTrackingActive={isTrackingActive}
           onLocationSent={(success) => {
             if (!success) {
               console.log("GPS location sharing failed");

@@ -30,6 +30,8 @@ from schema.trip import (
     TripUpdateRequest, RouteResponse)
 
 
+from .student import calculate_total_seats_taken
+
 router = APIRouter(
     prefix="/admin",
     tags=["Admin"],
@@ -447,29 +449,88 @@ def create_single_trip(trip_data: SingleTripCreateRequest , db: db_dependency):
             )
 
 
-@router.get('/all_trips')#, response_model = List[TripResponse]
+@router.get('/all_trips')
 def get_all_trips(db: db_dependency):
     try:
         today = datetime.now().date()
         
         query = (
             select(Trip)
-        .where(Trip.date >= today, Trip.status != 'completed')
-        .options(
-            selectinload(Trip.bus), 
-            selectinload(Trip.driver),
-            selectinload(Trip.route).selectinload(Route.start_terminal),
-            selectinload(Trip.route).selectinload(Route.terminals).selectinload(TripTerminal.terminal)))
+            .where(Trip.date >= today, Trip.status != 'completed')
+            .options(
+                selectinload(Trip.bus), 
+                selectinload(Trip.driver),
+                selectinload(Trip.route).selectinload(Route.start_terminal),
+                selectinload(Trip.route).selectinload(Route.terminals).selectinload(TripTerminal.terminal)
+            )
+        )
         trips = db.scalars(query).all()
-   
-        return trips
+        
+        # Convert to dict and add seat information
+        response_data = []
+        for trip in trips:
+            # Convert SQLAlchemy object to dict
+            trip_dict = {c.name: getattr(trip, c.name) for c in trip.__table__.columns}
+            
+            # Add route details (including nested relationships)
+            if trip.route:
+                route_dict = {c.name: getattr(trip.route, c.name) for c in trip.route.__table__.columns}
+                
+                # Add start_terminal
+                if trip.route.start_terminal:
+                    route_dict['start_terminal'] = {c.name: getattr(trip.route.start_terminal, c.name) 
+                                                   for c in trip.route.start_terminal.__table__.columns}
+                else:
+                    route_dict['start_terminal'] = None
+                
+                # Add terminals list
+                if trip.route.terminals:
+                    route_dict['terminals'] = []
+                    for trip_terminal in trip.route.terminals:
+                        tt_dict = {c.name: getattr(trip_terminal, c.name) for c in trip_terminal.__table__.columns}
+                        if trip_terminal.terminal:
+                            tt_dict['terminal'] = {c.name: getattr(trip_terminal.terminal, c.name) 
+                                                  for c in trip_terminal.terminal.__table__.columns}
+                        else:
+                            tt_dict['terminal'] = None
+                        route_dict['terminals'].append(tt_dict)
+                else:
+                    route_dict['terminals'] = []
+                
+                trip_dict['route'] = route_dict
+            else:
+                trip_dict['route'] = None
+            
+            # Add bus details
+            if trip.bus:
+                trip_dict['bus'] = {c.name: getattr(trip.bus, c.name) for c in trip.bus.__table__.columns}
+            else:
+                trip_dict['bus'] = None
+            
+            # Add driver details
+            if trip.driver:
+                trip_dict['driver'] = {c.name: getattr(trip.driver, c.name) for c in trip.driver.__table__.columns}
+            else:
+                trip_dict['driver'] = None
+            
+            # Calculate and add seat information
+            seats_taken = calculate_total_seats_taken(db, trip.id, trip.route_id)
+            total_capacity = trip.bus.no_seats if trip.bus else 0
+            
+            trip_dict['seats_taken'] = seats_taken
+            trip_dict['total_capacity'] = total_capacity
+            trip_dict['seats_available'] = total_capacity - seats_taken
+            
+            response_data.append(trip_dict)
+        
+        return response_data
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail =f'Unable to get all trips. {str(e)}'
+            detail=f'Unable to get all trips. {str(e)}'
         )
-
+    
 
 @router.patch('/trip/{trip_id}')
 def update_trip(trip_id: int, request: TripUpdateRequest, db: db_dependency):

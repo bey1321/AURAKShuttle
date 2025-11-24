@@ -28,7 +28,23 @@ router = APIRouter(prefix='/user', tags=['User'])
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.get('/get_mytrips', status_code=status.HTTP_200_OK)#, response_model=List[TripResponse]
+def calculate_total_seats_taken(db, trip_id: int, route_id: int) -> int:
+
+
+    # Count students registered for this route (semester-long registration)
+    regular_students_count = db.query(Registered).filter(
+        Registered.route_id == route_id
+    ).count()
+    
+    # Count one-time reservations for this specific trip
+    one_time_reservations_count = db.query(TripReservation).filter(
+        TripReservation.trip_id == trip_id,
+        TripReservation.status == 'confirmed'
+    ).count()
+    
+    return regular_students_count + one_time_reservations_count
+
+@router.get('/get_mytrips', status_code=status.HTTP_200_OK)
 def get_my_trips(db: db_dependency, user = Depends(get_user)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Unauthorized access')
@@ -41,7 +57,9 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             .join(Registered, Registered.route_id == Route.id)
             .where(Registered.student_id == user['id'], Registered.status == 'approved')
             .options(
-                selectinload(Trip.route), 
+                selectinload(Trip.route),
+                selectinload(Trip.driver),
+ 
                 selectinload(Trip.bus)
             )
         )
@@ -56,13 +74,16 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             )
             .options(
                 selectinload(Trip.route), 
-                selectinload(Trip.bus)
+                selectinload(Trip.bus),
+                selectinload(Trip.driver),
+
+                selectinload(Trip.route).selectinload(Route.terminals).selectinload(TripTerminal.terminal)
+
             )
         )
         
         regular_trips = db.scalars(regular_trips_stmt).all()
         reserved_trips = db.scalars(reserved_trips_stmt).all()
-        all_trips = regular_trips + reserved_trips
 
         # Combine both lists and remove duplicates using trip.id as key
         all_trips_dict = {trip.id: trip for trip in regular_trips}
@@ -78,20 +99,33 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             key=lambda t: (t.date, t.ETA)
         )
         
-        # Build response with route_name from the route relationship
+        # Convert to dict and add seat information
         response_data = []
         for trip in sorted_trips:
-            trip_data = {
-                "id": trip.id,
-                "date": trip.date,
-                "status": trip.status,
-                "ETA": trip.ETA,
-                "bus_id": trip.bus_id,
-                "route_id": trip.route_id,
-                "route_name": trip.route.name if trip.route else None,  # Get name from Route
-                # Add any other fields your TripResponse needs
-            }
-            response_data.append(trip_data)
+            # Convert SQLAlchemy object to dict
+            trip_dict = {c.name: getattr(trip, c.name) for c in trip.__table__.columns}
+            
+            # Add route details
+            if trip.route:
+                trip_dict['route'] = {c.name: getattr(trip.route, c.name) for c in trip.route.__table__.columns}
+            else:
+                trip_dict['route'] = None
+            
+            # Add bus details
+            if trip.bus:
+                trip_dict['bus'] = {c.name: getattr(trip.bus, c.name) for c in trip.bus.__table__.columns}
+            else:
+                trip_dict['bus'] = None
+            
+            # Calculate and add seat information
+            seats_taken = calculate_total_seats_taken(db, trip.id, trip.route_id)
+            total_capacity = trip.bus.no_seats if trip.bus else 0
+            
+            trip_dict['seats_taken'] = seats_taken
+            trip_dict['total_capacity'] = total_capacity
+            trip_dict['seats_available'] = total_capacity - seats_taken
+            
+            response_data.append(trip_dict)
         
         return response_data
 
@@ -102,7 +136,8 @@ def get_my_trips(db: db_dependency, user = Depends(get_user)):
             detail=f'Internal Server Error! Unable to get your shuttle trips: {str(e)}'
         )
 
-@router.get('/all_trips', status_code=status.HTTP_200_OK) #, response_model=List[TripResponse]
+
+@router.get('/all_trips', status_code=status.HTTP_200_OK)
 def getAllTrips(db: db_dependency, user = Depends(get_user)):
 
     if not user:
@@ -112,35 +147,47 @@ def getAllTrips(db: db_dependency, user = Depends(get_user)):
         # Query all trips with route relationship loaded
         trips = db.query(Trip).options(
             selectinload(Trip.route),
-            selectinload(Trip.bus)
+            selectinload(Trip.bus),
+            selectinload(Trip.route).selectinload(Route.terminals).selectinload(TripTerminal.terminal)
+
         ).all()
         
-        # Build response with route_name
+        # Convert to dict and add seat information
         response_data = []
         for trip in trips:
-            trip_data = {
-                "id": trip.id,
-                "date": trip.date,
-                "status": trip.status,
-                "ETA": trip.ETA,
-                "bus_id": trip.bus_id,
-                "route_id": trip.route_id,
-                "route_name": trip.route.name if trip.route else None,
-                # Add any other fields your TripResponse needs
-            }
-            response_data.append(trip_data)
+            # Convert SQLAlchemy object to dict
+            trip_dict = {c.name: getattr(trip, c.name) for c in trip.__table__.columns}
+            
+            # Add route details
+            if trip.route:
+                trip_dict['route'] = {c.name: getattr(trip.route, c.name) for c in trip.route.__table__.columns}
+            else:
+                trip_dict['route'] = None
+            
+            # Add bus details
+            if trip.bus:
+                trip_dict['bus'] = {c.name: getattr(trip.bus, c.name) for c in trip.bus.__table__.columns}
+            else:
+                trip_dict['bus'] = None
+            
+            # Calculate and add seat information
+            seats_taken = calculate_total_seats_taken(db, trip.id, trip.route_id)
+            total_capacity = trip.bus.no_seats if trip.bus else 0
+            
+            trip_dict['seats_taken'] = seats_taken
+            trip_dict['total_capacity'] = total_capacity
+            trip_dict['seats_available'] = total_capacity - seats_taken
+            
+            response_data.append(trip_dict)
         
-        return trips #response_data
+        return response_data
          
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=f'Internal Server Error: {str(e)}'
         )
-
-
-
-
+    
 @router.post('/reserve_seat/{trip_id}', status_code=status.HTTP_201_CREATED)
 async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)):
     
@@ -428,32 +475,53 @@ def get_routes(db: db_dependency, user=Depends(get_user)):
 @router.post('/route/{route_id}')
 def register_route_request(route_id: int, db: db_dependency, user=Depends(get_user)):
     if not user:
-        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED, detail = "Unauthorized access. Please login")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized access. Please login")
     
-
     try:
-        student = db.query(User).filter(User.id== user['id']).first()
+        student = db.query(User).filter(User.id == user['id']).first()
 
-        if not student  :
-            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail = "Unable to find user in the database")
+        if not student:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to find user in the database")
         
         route = db.query(Route).filter(Route.id == route_id).first()
 
         if not route:
-            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail = "Unable to find route in the database")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to find route in the database")
 
+        # Check if student is already registered for this route
+        existing_registration = db.query(Registered).filter(
+            Registered.student_id == student.id,
+            Registered.route_id == route_id
+        ).first()
+
+        if existing_registration:
+            # Return different message based on registration status
+            if existing_registration.status == 'approved':
+                return {'message': 'You are already registered for this route', 'status': 'approved'}
+            elif existing_registration.status == 'pending':
+                return {'message': 'You already have a pending registration request for this route', 'status': 'pending'}
+            elif existing_registration.status == 'rejected':
+                return {'message': 'Your previous registration for this route was rejected. Please contact admin for more information.', 'status': 'rejected'}
+            else:
+                return {'message': f'You already have a registration for this route with status: {existing_registration.status}', 'status': existing_registration.status}
         
+        # Create new registration request
         new_reg = Registered(
-            route_id = route_id,
-            student_id = student.id
+            route_id=route_id,
+            student_id=student.id
         )
 
         db.add(new_reg)
         db.commit()
+        db.refresh(new_reg)
 
-        return {'message': 'registration requested'}
-
+        return {
+            'message': 'Registration requested successfully',
+            'registration_id': new_reg.id,
+            'status': new_reg.status
+        }
 
     except Exception as e:
-        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail = f"Internal Server Error. {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal Server Error. {str(e)}")
 #routes related to gps tracking
