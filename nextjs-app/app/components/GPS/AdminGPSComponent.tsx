@@ -60,9 +60,17 @@ export function AdminGPSComponent({
 
   const formatTime = (dateString: string) => {
     try {
-      // Handle UTC timestamps by appending 'Z' if not present
-      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-      const date = new Date(utcDateString);
+      // Handle different timestamp formats
+      // Replace timezone offset (+00:00) with Z for UTC, or just parse as-is
+      let cleanDateString = dateString;
+      if (dateString.includes('+00:00')) {
+        cleanDateString = dateString.replace('+00:00', 'Z');
+      } else if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // Only append Z if there's no timezone info
+        cleanDateString = `${dateString}Z`;
+      }
+
+      const date = new Date(cleanDateString);
 
       // Check if date is valid
       if (isNaN(date.getTime())) {
@@ -83,9 +91,17 @@ export function AdminGPSComponent({
 
   const getTimeAgo = (dateString: string) => {
     try {
-      // Handle UTC timestamps by appending 'Z' if not present
-      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-      const date = new Date(utcDateString);
+      // Handle different timestamp formats
+      // Replace timezone offset (+00:00) with Z for UTC, or just parse as-is
+      let cleanDateString = dateString;
+      if (dateString.includes('+00:00')) {
+        cleanDateString = dateString.replace('+00:00', 'Z');
+      } else if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // Only append Z if there's no timezone info
+        cleanDateString = `${dateString}Z`;
+      }
+
+      const date = new Date(cleanDateString);
 
       // Check if date is valid
       if (isNaN(date.getTime())) {

@@ -217,8 +217,7 @@ export default function AdminCreateBus() {
                 <TableHead>Model</TableHead>
                 <TableHead>Manufacturer</TableHead>
                 <TableHead>Seats</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assigned Trips</TableHead>
+                <TableHead>Status</TableHead>                
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -235,15 +234,6 @@ export default function AdminCreateBus() {
                       variant={bus.status === "Active" ? "default" : "outline"}
                     >
                       {bus.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                      onClick={() => handleViewBusTrips(bus)}
-                    >
-                      {busTripCounts[bus.busID] ?? 0} trips
                     </Badge>
                   </TableCell>
                   <TableCell className="flex gap-2">

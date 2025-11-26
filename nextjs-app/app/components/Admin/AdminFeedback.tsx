@@ -36,15 +36,17 @@ interface Feedback {
       id: number;
       name: string;
     };
-    driver?: {
-      id: number;
-      first_name: string;
-      last_name: string;
-    };
     bus?: {
       id: number;
       plate_num: string;
+      model?: string;
     };
+  };
+  user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email?: string;
   };
   student?: {
     id: number;
@@ -99,14 +101,13 @@ export default function AdminFeedback() {
 
   const filteredFeedbacks = feedbacks.filter((fb) => {
     const avgRating = parseFloat(getAverageRating(fb));
+    const student = fb.user || fb.student;
     const matchesSearch =
       !searchQuery ||
       fb.comment?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fb.trip?.route?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fb.trip?.driver?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fb.trip?.driver?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fb.student?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fb.student?.last_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      student?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student?.last_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesRating =
       ratingFilter === "all" ||
@@ -217,7 +218,7 @@ export default function AdminFeedback() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by comment, route, driver, or student..."
+                  placeholder="Search by comment, route, or student..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -274,6 +275,7 @@ export default function AdminFeedback() {
               {filteredFeedbacks.map((feedback) => {
                 const avgRating = parseFloat(getAverageRating(feedback));
                 const badge = getRatingBadge(avgRating);
+                const student = feedback.user || feedback.student;
                 return (
                   <div
                     key={feedback.id}
@@ -295,18 +297,16 @@ export default function AdminFeedback() {
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Driver:</span>{" "}
+                            <span className="text-muted-foreground">Bus:</span>{" "}
                             <span className="font-medium">
-                              {feedback.trip?.driver
-                                ? `${feedback.trip.driver.first_name} ${feedback.trip.driver.last_name}`
-                                : "N/A"}
+                              {feedback.trip?.bus?.plate_num || "N/A"}
                             </span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Student:</span>{" "}
                             <span className="font-medium">
-                              {feedback.student
-                                ? `${feedback.student.first_name} ${feedback.student.last_name}`
+                              {student
+                                ? `${student.first_name} ${student.last_name}`
                                 : "N/A"}
                             </span>
                           </div>
@@ -347,7 +347,9 @@ export default function AdminFeedback() {
             <DialogTitle>Feedback Details</DialogTitle>
             <DialogDescription>Complete feedback information</DialogDescription>
           </DialogHeader>
-          {selectedFeedback && (
+          {selectedFeedback && (() => {
+            const student = selectedFeedback.user || selectedFeedback.student;
+            return (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -375,19 +377,17 @@ export default function AdminFeedback() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Driver</p>
+                  <p className="text-sm text-muted-foreground">Student</p>
                   <p className="font-medium">
-                    {selectedFeedback.trip?.driver
-                      ? `${selectedFeedback.trip.driver.first_name} ${selectedFeedback.trip.driver.last_name}`
+                    {student
+                      ? `${student.first_name} ${student.last_name}`
                       : "N/A"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Student</p>
+                  <p className="text-sm text-muted-foreground">Student Email</p>
                   <p className="font-medium">
-                    {selectedFeedback.student
-                      ? `${selectedFeedback.student.first_name} ${selectedFeedback.student.last_name}`
-                      : "N/A"}
+                    {student?.email || "N/A"}
                   </p>
                 </div>
               </div>
@@ -446,7 +446,8 @@ export default function AdminFeedback() {
                 </Button>
               </div>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

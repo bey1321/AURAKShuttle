@@ -39,7 +39,7 @@ export function DriverDashboard() {
     (trip) => trip.date === today && !trip.route?.type?.toLowerCase().includes("semester")
   );
   const semesterTrips = trips.filter((trip) =>
-    trip.route?.type?.toLowerCase().includes("semester")
+    trip.route?.type?.toLowerCase().includes("semester") && trip.date === today
   );
 
   useEffect(() => {
@@ -81,14 +81,21 @@ export function DriverDashboard() {
   const handleEndTrip = async (tripId: number) => {
     try {
       setEndingTripId(tripId);
-      await driverAPI.completeTrip(tripId);
+      console.log("Attempting to complete trip:", tripId);
+
+      const response = await driverAPI.completeTrip(tripId);
+      console.log("Complete trip response:", response);
+
       // Refresh trips list
       await fetchTrips();
+      console.log("Trips refreshed after completion");
+
       // Show success message
       alert("Trip completed successfully!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error completing trip:", error);
-      alert("Failed to complete trip. Please try again.");
+      console.error("Error details:", error?.message, error?.response);
+      alert(`Failed to complete trip: ${error?.message || "Please try again."}`);
     } finally {
       setEndingTripId(null);
     }
@@ -104,58 +111,7 @@ export function DriverDashboard() {
         </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Today's Trips</p>
-                <h3>4</h3>
-              </div>
-              <Bus className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Current Trip</p>
-                <h3>In Progress</h3>
-              </div>
-              <Clock className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Passengers
-                </p>
-                <h3>43</h3>
-              </div>
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <h3>0/4</h3>
-              </div>
-              <CheckCircle className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Assigned Trips */}
@@ -509,51 +465,7 @@ export function DriverDashboard() {
         <div className="space-y-6">
           <DriverNotification trips={trips} />
         </div>
-      </div>
-
-      {/* Recent Alerts Sent */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Alerts</CardTitle>
-          <CardDescription>Alerts you've sent to passengers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                id: 1,
-                message: "Running 5 minutes late due to traffic",
-                time: "Today, 10:25 AM",
-                recipients: 28,
-              },
-              {
-                id: 2,
-                message: "Starting trip to Main Campus now",
-                time: "Today, 8:00 AM",
-                recipients: 35,
-              },
-            ].map((alert) => (
-              <div
-                key={alert.id}
-                className="flex items-start justify-between p-3 border border-border rounded-lg"
-              >
-                <div className="flex items-start gap-3">
-                  <Bell className="w-5 h-5 text-primary mt-0.5" />
-                  <div>
-                    <p>{alert.message}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Sent to {alert.recipients} passengers
-                    </p>
-                  </div>
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {alert.time}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      </div>    
     </div>
   );
 }

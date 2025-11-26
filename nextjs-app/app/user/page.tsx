@@ -2,10 +2,11 @@
 
 import { StudentDashboard } from "../components/User/StudentDashboard";
 import { Layout } from "../components/Layout";
-import { RealTimeTracking } from "../components/RealTimeTracking";
+// import { RealTimeTracking } from "../components/RealTimeTracking";
 import { ScheduleSearch } from "../components/User/UserScheduleSearch";
 import { LostFoundPage } from "../components/User/LostAndFound/LostFoundPage";
 import FeedbackPage from "../components/User/FeedBack/FeedbackPage";
+import { ReserveSeat } from "../components/User/ReserveSeat";
 import { useState } from "react";
 
 export default function StudentPage() {
@@ -15,8 +16,10 @@ export default function StudentPage() {
     switch (currentPage) {
       case "user-dashboard":
         return <StudentDashboard onNavigate={setCurrentPage} />;
-      case "tracking":
-        return <RealTimeTracking />;
+      case "reserve-seat":
+        return <ReserveSeat />;
+      // case "tracking":
+      //   return <RealTimeTracking />;
       case "schedule":
         return <ScheduleSearch />;
       case "user-lost-found":

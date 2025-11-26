@@ -38,8 +38,8 @@ export default function FeedbackPage() {
           feedback.map((r: any) => ({
             id: r.id,
             trip_id: r.trip_id,
-            route: r.trip?.route_name || "Unknown Route",
-            date: r.trip?.date || "",
+            route: r.route_name || "Unknown Route",
+            date: r.trip_date || "",
             rating: Math.round(
               (r.cleanliness + r.driver_rating + r.timeliness) / 3
             ),

@@ -11,4 +11,5 @@ export * from "./Layout";
 export { LostFoundPage } from "./User/LostAndFound/LostFoundPage";
 export * from "./User/UserScheduleSearch";
 export * from "./User/StudentDashboard";
+export * from "./User/ReserveSeat";
 export * from "./GPS";

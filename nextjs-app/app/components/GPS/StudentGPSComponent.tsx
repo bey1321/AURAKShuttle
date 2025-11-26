@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { MapPin, Bus, Clock, Navigation, AlertCircle } from "lucide-react";
 import {
   Card,
@@ -13,9 +14,14 @@ import {
   AlertDescription,
 } from "../ui";
 import { useGPSWebSocket, LocationData } from "../../hooks/useGPSWebSocket";
-import { LiveTrackingMap } from "./LiveTrackingMap";
 import { WebSocketDebugPanel } from "./WebSocketDebugPanel";
 import { NetworkDebugPanel } from "./NetworkDebugPanel";
+
+// Dynamically import LiveTrackingMap to avoid SSR issues with Leaflet
+const LiveTrackingMap = dynamic(
+  () => import("./LiveTrackingMap").then((mod) => mod.LiveTrackingMap),
+  { ssr: false }
+);
 
 interface StudentGPSComponentProps {
   tripId: number;
@@ -82,9 +88,17 @@ export function StudentGPSComponent({
 
   const formatTime = (dateString: string) => {
     try {
-      // Handle UTC timestamps by appending 'Z' if not present
-      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-      const date = new Date(utcDateString);
+      // Handle different timestamp formats
+      // Replace timezone offset (+00:00) with Z for UTC, or just parse as-is
+      let cleanDateString = dateString;
+      if (dateString.includes('+00:00')) {
+        cleanDateString = dateString.replace('+00:00', 'Z');
+      } else if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // Only append Z if there's no timezone info
+        cleanDateString = `${dateString}Z`;
+      }
+
+      const date = new Date(cleanDateString);
 
       // Check if date is valid
       if (isNaN(date.getTime())) {
@@ -105,9 +119,17 @@ export function StudentGPSComponent({
 
   const getTimeAgo = (dateString: string) => {
     try {
-      // Handle UTC timestamps by appending 'Z' if not present
-      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-      const date = new Date(utcDateString);
+      // Handle different timestamp formats
+      // Replace timezone offset (+00:00) with Z for UTC, or just parse as-is
+      let cleanDateString = dateString;
+      if (dateString.includes('+00:00')) {
+        cleanDateString = dateString.replace('+00:00', 'Z');
+      } else if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // Only append Z if there's no timezone info
+        cleanDateString = `${dateString}Z`;
+      }
+
+      const date = new Date(cleanDateString);
 
       // Check if date is valid
       if (isNaN(date.getTime())) {

@@ -16,6 +16,7 @@ import {
   AdminManageDrivers,
   AdminLostFoundPage,
   UserScheduleSearch,
+  ReserveSeat,
 } from "./components";
 import AdminCreateBus from "./components/Admin/ManageBuses/AdminCreateBus";
 import FeedbackPage from "./components/User/FeedBack/FeedbackPage";
@@ -116,8 +117,8 @@ export default function App({
         return userRole === "admin" ? <AdminLostFoundPage /> : null;
       case "admin-approve-registration":
         return userRole === "admin" ? <AdminApproveRegistrations /> : null;
-      case "admin-live-tracking":
-        return userRole === "admin" ? <AdminLiveTracking /> : null;
+      // case "admin-live-tracking":
+      //   return userRole === "admin" ? <AdminLiveTracking /> : null;
       case "admin-feedback":
         return userRole === "admin" ? <AdminFeedback /> : null;
 
@@ -144,6 +145,8 @@ export default function App({
           return userRole === "student" ?  <UserLiveTracking />: null;
       case "feedback":
         return userRole === "student" ?  <FeedbackPage /> : null;
+      case "reserve-seat":
+        return userRole === "student" ? <ReserveSeat /> : null;
       default:
         return null;
     }

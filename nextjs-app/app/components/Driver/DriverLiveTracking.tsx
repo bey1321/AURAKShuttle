@@ -296,58 +296,7 @@ export function DriverLiveTracking() {
         </p>
       </div>
 
-      {/* Active Shuttles Count */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Shuttles</p>
-                <h3>3</h3>
-              </div>
-              <Bus className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Passengers
-                </p>
-                <h3>84</h3>
-              </div>
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Occupancy</p>
-                <h3>70%</h3>
-              </div>
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Routes Active</p>
-                <h3>4</h3>
-              </div>
-              <Navigation className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      
 
       {/* Map View - Leaflet */}
       <div className="w-full">

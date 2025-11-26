@@ -39,6 +39,7 @@ export function Layout({
     student: [
       { icon: Home, label: "User Dashboard", id: "user-dashboard" },
       { icon: MessageSquare, label: "Register for a Trip", id: "user-route-registration" },
+      { icon: Calendar, label: "Reserve Seat", id: "reserve-seat" },
       { icon: MapPin, label: "Track Shuttle", id: "student-live-tracking" },
       { icon: Calendar, label: "Schedule", id: "schedule" },
       { icon: Package, label: "Lost & Found", id: "user-lost-found" },
@@ -58,7 +59,7 @@ export function Layout({
       { icon: MessageSquare, label: "Approve Registrations", id: "admin-approve-registration" },
       { icon: Users, label: "Manage Users", id: "manage-users" },
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
-      { icon: MapPin, label: "Live Tracking", id: "admin-live-tracking" },
+      // { icon: MapPin, label: "Live Tracking", id: "admin-live-tracking" },
       { icon: Package, label: "Admin Lost & Found", id: "admin-lost-found" },
       { icon: MessageSquare, label: "Admin Feedback", id: "admin-feedback" },
     ],

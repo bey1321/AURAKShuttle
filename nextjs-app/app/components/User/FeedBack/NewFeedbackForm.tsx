@@ -190,7 +190,7 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
               ) : (
                 recentTrips.map((trip) => (
                   <SelectItem key={trip.id} value={trip.id.toString()}>
-                    {trip.route_name} • {trip.date}
+                    {trip.route_name || trip.route?.name || "Unknown Route"} • {trip.date} • {trip.start_time || trip.route?.start_time || "N/A"} - {trip.end_time || trip.route?.end_time || "N/A"}
                   </SelectItem>
                 ))
               )}

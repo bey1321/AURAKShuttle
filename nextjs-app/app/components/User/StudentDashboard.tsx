@@ -3,11 +3,8 @@
 import {
   Bus,
   MapPin,
-  Bell,
   Package,
   Clock,
-  Users,
-  AlertCircle,
   User,
 } from "lucide-react";
 import {
@@ -28,7 +25,6 @@ import {
   Label,
   Input,
 } from "../ui";
-import { upcomingTrips, nextShuttle } from "../../data/database";
 import { getNotifications, LocalNotification } from "../../lib/localNotifications";
 import { userAPI } from "../../lib/api";
 import React, { useState, useEffect, useRef } from "react";
@@ -48,6 +44,17 @@ interface Trip {
   available?: number;
   days: string[];
   raw?: any;
+  route?: {
+    name: string;
+    start_time: string;
+    end_time: string;
+    days_of_week: string[];
+  };
+  bus?: {
+    plate_num: string;
+    no_seats: number;
+    model?: string;
+  };
 }
 
 interface StudentDashboardProps {
@@ -227,6 +234,17 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
               ? trip.available
               : undefined,
             days: trip.days_of_week || trip.route?.days_of_week || [],
+            route: trip.route ? {
+              name: trip.route.name || "",
+              start_time: trip.route.start_time || "",
+              end_time: trip.route.end_time || "",
+              days_of_week: trip.route.days_of_week || [],
+            } : undefined,
+            bus: trip.bus ? {
+              plate_num: trip.bus.plate_num || "",
+              no_seats: trip.bus.no_seats || 0,
+              model: trip.bus.model || "",
+            } : undefined,
             raw: trip,
           } as Trip))
           .filter((trip: Trip) => trip.date === today); // Filter for today only
@@ -272,241 +290,11 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
         </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Next Shuttle</p>
-                <h3>5 min</h3>
-              </div>
-              <Clock className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Routes</p>
-                <h3>8</h3>
-              </div>
-              <MapPin className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Notifications</p>
-                <h3>3</h3>
-              </div>
-              <Bell className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Lost Items</p>
-                <h3>12</h3>
-              </div>
-              <Package className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-
       {/* Mini Map Placeholder - Leaflet demo */}
               <div className="h-48 bg-muted rounded-lg overflow-hidden" aria-hidden>
                 <div id="leaflet-demo-map" className="w-full h-full" />
                 {/* geolocation watch starts automatically; no toggle needed */}
               </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Next Available Shuttle */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Next Available Shuttle</CardTitle>
-            <CardDescription>Your upcoming ride details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-primary/5 rounded-lg border-l-4 border-primary">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3>{nextShuttle.route}</h3>
-                  <p className="text-muted-foreground">
-                    Departure: {nextShuttle.time}
-                  </p>
-                </div>
-                <Badge variant="default">
-                  Arriving in {nextShuttle.arrivalIn}
-                </Badge>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span>Driver: {nextShuttle.driver}</span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Occupancy</span>
-                    <span>{nextShuttle.occupancy}%</span>
-                  </div>
-                  <Progress value={nextShuttle.occupancy} />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                className="flex-1"
-                onClick={() => onNavigate?.("tracking")}
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                Track Live
-              </Button>
-              <Dialog
-                open={showReserveDialog}
-                onOpenChange={setShowReserveDialog}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex-1">
-                    Reserve Seat
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Reserve Seat</DialogTitle>
-                    <DialogDescription>
-                      Book your seat for the next shuttle
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Route</Label>
-                      <Input value={nextShuttle.route} disabled />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Departure Time</Label>
-                      <Input value={nextShuttle.time} disabled />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Your Name</Label>
-                      <Input placeholder="Enter your full name" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Student ID</Label>
-                      <Input placeholder="Enter your student ID" />
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={() => {
-                        // Seat reserved successfully!
-                        setShowReserveDialog(false);
-                      }}
-                    >
-                      Confirm Reservation
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-    
-          </CardContent>
-        </Card>
-
-        {/* Notifications Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Recent updates and alerts</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {localNotifs.length ? (
-              localNotifs.map((notif: LocalNotification) => (
-                <div
-                  key={notif.id}
-                  className="p-3 border border-border rounded-lg space-y-2 cursor-pointer"
-                  onClick={() => {
-                    setActiveNotif(notif);
-                    setNotifDialogOpen(true);
-                  }}
-                >
-                  <div className="flex items-start gap-2">
-                    <AlertCircle
-                      className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                        notif.type === "info"
-                          ? "text-blue-500"
-                          : notif.type === "success"
-                          ? "text-green-500"
-                          : notif.type === "warning"
-                          ? "text-yellow-500"
-                          : "text-red-500"
-                      }`}
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm">{notif.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {notif.time}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              // fallback to example static content
-              <div className="p-3 border border-border rounded-lg space-y-2">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500`} />
-                  <div className="flex-1">
-                    <p className="text-sm">No notifications yet</p>
-                    <p className="text-xs text-muted-foreground mt-1">You're all caught up</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Button variant="outline" className="w-full">
-              View All Notifications
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Notification details dialog */}
-        <Dialog open={notifDialogOpen} onOpenChange={setNotifDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Notification</DialogTitle>
-              <DialogDescription>
-                Details about this notification
-              </DialogDescription>
-            </DialogHeader>
-            {activeNotif && (
-              <div className="py-4">
-                <p className="font-medium mb-2">{activeNotif.message}</p>
-                <p className="text-xs text-muted-foreground">{activeNotif.time}</p>
-                {activeNotif.data && (
-                  <pre className="mt-3 text-xs bg-muted p-2 rounded">{JSON.stringify(activeNotif.data, null, 2)}</pre>
-                )}
-                <div className="mt-4">
-                  <Button onClick={() => setNotifDialogOpen(false)}>Close</Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
 
       {/* Today's Schedule */}
       <Card>
@@ -531,29 +319,29 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
                         </div>
                         <div className="flex-1 space-y-3">
                           <div>
-                            <h3>{trip.route_name}</h3>
+                            <h3>{trip.route?.name || trip.route_name || `Trip ${trip.id}`}</h3>
                             <div className="text-xs text-muted-foreground mt-1">
                               ID: {trip.id} • {trip.date} • {trip.status}
                             </div>
                             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
-                                <User className="w-4 h-4" />
-                                <span>{trip.driver}</span>
+                                <Clock className="w-4 h-4" />
+                                <span>{trip.route?.start_time || "09:00:00"} - {trip.route?.end_time || "—"}</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                <span>{trip.departure} - {trip.arrival}</span>
+                                <Bus className="w-4 h-4" />
+                                <span>Bus: {trip.bus?.plate_num || "N/A"}</span>
                               </div>
                             </div>
                           </div>
 
-                          {Array.isArray(trip.days) && trip.days.length > 0 ? (
+                          {Array.isArray(trip.route?.days_of_week) && trip.route.days_of_week.length > 0 ? (
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-muted-foreground">Days:</span>
                               <div className="flex gap-1">
-                                {trip.days.map((day) => (
+                                {trip.route.days_of_week.map((day: string) => (
                                   <Badge key={day} variant="outline" className="text-xs">
-                                    {day}
+                                    {day.substring(0, 3)}
                                   </Badge>
                                 ))}
                               </div>
@@ -561,18 +349,22 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
                           ) : null}
 
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Info:</span>
+                            <span className="text-sm text-muted-foreground">Seats:</span>
                             <span className="text-sm">
-                              {typeof trip.capacity === "number" && typeof trip.available === "number"
-                                ? `${trip.available} of ${trip.capacity} seats available`
+                              {trip.bus?.no_seats
+                                ? `1/${trip.bus.no_seats}`
                                 : "Seats info unavailable"}
                             </span>
-                            {typeof trip.capacity === "number" && typeof trip.available === "number" ? (
+                            {trip.bus?.no_seats ? (
                               <div className="flex-1 max-w-xs">
-                                <Progress 
-                                  value={((trip.capacity - trip.available) / trip.capacity) * 100} 
-                                  className="h-2"
-                                />
+                                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary"
+                                    style={{
+                                      width: `${(1 / trip.bus.no_seats) * 100}%`,
+                                    }}
+                                  />
+                                </div>
                               </div>
                             ) : null}
                           </div>
@@ -589,12 +381,6 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
                         >
                           View Details
                         </Button>
-                        <Button
-                          onClick={() => onNavigate?.("tracking")}
-                        >
-                          <MapPin className="w-4 h-4 mr-2" />
-                          Track Live
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -609,7 +395,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card
           className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => onNavigate?.("lost-found")}
+          onClick={() => onNavigate?.("user-lost-found")}
         >
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">

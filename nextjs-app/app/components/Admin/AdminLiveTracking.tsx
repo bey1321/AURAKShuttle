@@ -17,10 +17,17 @@ import {
   Input,
 } from "../ui";
 import React, { useEffect, useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import { activeShuttles, routes } from "../../data/database";
-import { AdminGPSComponent, AdminLiveMap } from "../GPS";
+import { AdminGPSComponent } from "../GPS";
 import { adminAPI } from "../../lib/api";
 import type { LocationData } from "../../hooks/useGPSWebSocket";
+
+// Dynamically import AdminLiveMap to avoid SSR issues with Leaflet
+const AdminLiveMap = dynamic(
+  () => import("../GPS/AdminLiveMap").then((mod) => mod.AdminLiveMap),
+  { ssr: false }
+);
 
 export function AdminLiveTracking() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
