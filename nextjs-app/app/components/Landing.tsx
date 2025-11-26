@@ -83,7 +83,7 @@ export default function Landing() {
       {/* Logo top-left */}
       <div className="absolute top-6 left-8 z-30 flex items-center gap-3">
         <Image src="/favicon.png" alt="logo" width={48} height={48} />
-        <div className="text-white text-xl font-semibold tracking-wide">AURAK Shuttle</div>
+        <div className="text-white text-3xl font-bold tracking-wide">AURAK Campus Shuttle Tracker</div>
       </div>
 
       {/* HERO - full viewport section containing hero and signup card */}

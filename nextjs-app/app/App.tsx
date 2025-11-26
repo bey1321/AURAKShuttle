@@ -117,8 +117,8 @@ export default function App({
         return userRole === "admin" ? <AdminLostFoundPage /> : null;
       case "admin-approve-registration":
         return userRole === "admin" ? <AdminApproveRegistrations /> : null;
-      // case "admin-live-tracking":
-      //   return userRole === "admin" ? <AdminLiveTracking /> : null;
+      case "admin-live-tracking":
+        return userRole === "admin" ? <AdminLiveTracking /> : null;
       case "admin-feedback":
         return userRole === "admin" ? <AdminFeedback /> : null;
 

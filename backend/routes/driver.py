@@ -66,8 +66,8 @@ def complete_trip(
 
         # Update trip status to completed
         trip.status = 'completed'
-        db.add(trip)
         db.commit()
+        db.refresh(trip)
 
         return {
             'message': 'Trip marked as completed successfully',

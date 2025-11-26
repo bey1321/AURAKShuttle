@@ -198,7 +198,18 @@ async def student_websocket(
         await websocket.close()
         return
 
-    print(f"✅ [Student WS] Trip {trip_id} found, route_id: {trip.route_id if trip.route_id else 'None'}")
+    # ---- CHECK IF TRIP IS IN PROGRESS ----
+    if trip.status != "in_progress":
+        print(f"❌ [Student WS] Trip {trip_id} is not active. Status: {trip.status}")
+        await websocket.send_json({
+            'type': 'error',
+            'message': f'Trip is not active. Current status: {trip.status}',
+            'status': trip.status
+        })
+        await websocket.close()
+        return
+
+    print(f"✅ [Student WS] Trip {trip_id} found and in progress, route_id: {trip.route_id if trip.route_id else 'None'}")
 
     # Check if student is registered for this route (make it optional/warning only)
     registration_result = await db.execute(
@@ -288,6 +299,15 @@ async def student_websocket(
 
     try:
         while True:
+            if trip.status == "completed":
+                print(f"❌ [Student WS] Trip {trip_id} is not active. Status: {trip.status}")
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': f'Trip is completed. Current status: {trip.status}',
+                    'status': trip.status
+                })
+                await websocket.close()
+                return
             data = await websocket.receive_json()
             # Optionally handle client messages (ping/pong, requests, etc.)
     except WebSocketDisconnect:
@@ -519,7 +539,7 @@ async def driver_websocket(websocket: WebSocket, driver_id: int, db: AsyncSessio
         if active_trip_id:
             trip = await db.get(Trip, active_trip_id)
             if trip and trip.status == "in_progress":
-                trip.status = "stopped"
+                trip.status = "completed"
                 db.add(trip)
                 await db.commit()
 

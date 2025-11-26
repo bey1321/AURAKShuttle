@@ -59,7 +59,7 @@ export function Layout({
       { icon: MessageSquare, label: "Approve Registrations", id: "admin-approve-registration" },
       { icon: Users, label: "Manage Users", id: "manage-users" },
       { icon: Users, label: "Manage Drivers", id: "manage-drivers" },
-      // { icon: MapPin, label: "Live Tracking", id: "admin-live-tracking" },
+      { icon: MapPin, label: "Live Tracking", id: "admin-live-tracking" },
       { icon: Package, label: "Admin Lost & Found", id: "admin-lost-found" },
       { icon: MessageSquare, label: "Admin Feedback", id: "admin-feedback" },
     ],
