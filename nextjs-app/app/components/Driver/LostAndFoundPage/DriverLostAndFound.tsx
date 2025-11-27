@@ -328,7 +328,7 @@ export default function DriverLostFoundPage() {
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
-                        <Button
+                        {/* <Button
                           size="sm"
                           className="flex-1"
                           onClick={(e) => {
@@ -338,7 +338,7 @@ export default function DriverLostFoundPage() {
                         >
                           <Hand className="w-4 h-4 mr-1" />
                           Claim
-                        </Button>
+                        </Button> */}
                       </div>
                     </CardContent>
                   </Card>
@@ -409,7 +409,7 @@ export default function DriverLostFoundPage() {
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
-                        <Button
+                        {/* <Button
                           size="sm"
                           className="flex-1"
                           onClick={(e) => {
@@ -419,7 +419,7 @@ export default function DriverLostFoundPage() {
                         >
                           <Hand className="w-4 h-4 mr-1" />
                           Claim
-                        </Button>
+                        </Button> */}
                       </div>
                     </CardContent>
                   </Card>

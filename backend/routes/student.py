@@ -273,12 +273,16 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
             'total_seats': total_seats
         }
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 400, 404) without modification
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         print(f"Error reserving seat: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f'Internal Server Error {str(e)}'
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Internal Server Error: {str(e)}'
         )
     
 @router.delete('/cancel_reservation/{trip_id}', status_code=status.HTTP_200_OK)

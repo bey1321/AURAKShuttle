@@ -49,6 +49,11 @@ export function AdminManageTrips() {
   const [editingTrip, setEditingTrip] = useState<any | null>(null);
   const [showEditTripDialog, setShowEditTripDialog] = useState(false);
 
+  // Success and Error dialog states
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
+
   // Load all trips, semester routes, and maps
   const loadTrips = async () => {
     try {
@@ -78,7 +83,8 @@ export function AdminManageTrips() {
       );
     } catch (e: any) {
       console.error("Error loading trips:", e);
-      alert(e?.message || "Failed to load trips");
+      setDialogMessage(e?.message || "Failed to load trips");
+      setShowErrorDialog(true);
     } finally {
       setLoading(false);
     }
@@ -98,8 +104,11 @@ export function AdminManageTrips() {
     try {
       await adminAPI.deleteTrip(tripToDelete.id);
       await loadTrips();
+      setDialogMessage("Trip deleted successfully!");
+      setShowSuccessDialog(true);
     } catch (e: any) {
-      alert(e?.message || "Failed to delete trip");
+      setDialogMessage(e?.message || "Failed to delete trip");
+      setShowErrorDialog(true);
     } finally {
       setTripToDelete(null);
       setDeleteDialogOpen(false);
@@ -127,10 +136,12 @@ export function AdminManageTrips() {
       // Reload trips after deletion
       await loadTrips();
 
-      alert("Route and all related trips deleted successfully");
+      setDialogMessage("Route and all related trips deleted successfully!");
+      setShowSuccessDialog(true);
     } catch (e: any) {
       console.error("Delete route error:", e);
-      alert(e?.message || "Failed to delete route");
+      setDialogMessage(e?.message || "Failed to delete route");
+      setShowErrorDialog(true);
     } finally {
       setRouteToDelete(null);
       setDeleteRouteDialogOpen(false);
@@ -149,8 +160,11 @@ export function AdminManageTrips() {
   };
 
   // --- Filters ---
-  const filterTrips = (trips: any[]) =>
-    trips.filter((trip) => {
+  const filterTrips = (trips: any[]) => {
+    const today = new Date().toISOString().split('T')[0];
+    const filtered = trips.filter((trip) => {
+      const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+      if (tripDate < today) return false;
       const query = search.toLowerCase();
       const routeName = trip.route_name || trip.route?.name || "";
       const driverName = driversMap[trip.driver_id] || "";
@@ -159,7 +173,6 @@ export function AdminManageTrips() {
       const status = trip.status || "";
       const startTerminal = terminalsMap[trip.route?.start_terminal_id] || "";
       const endTerminal = terminalsMap[trip.route?.end_terminal_id] || "";
-      
       return (
         routeName.toLowerCase().includes(query) ||
         driverName.toLowerCase().includes(query) ||
@@ -170,6 +183,13 @@ export function AdminManageTrips() {
         endTerminal.toLowerCase().includes(query)
       );
     });
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.date || "").getTime();
+      const dateB = new Date(b.date || "").getTime();
+      return dateA - dateB;
+    });
+    return filtered;
+  };
   const filterRoutes = (routesList: any[]) =>
     routesList.filter((route) => {
       const query = search.toLowerCase();
@@ -221,7 +241,7 @@ export function AdminManageTrips() {
 
     return (
       <TableRow key={trip.id}>
-        <TableCell>{trip.id}</TableCell>
+        {/* <TableCell>{trip.id}</TableCell> */}
         <TableCell>{routeName}</TableCell>
         <TableCell>{routeType}</TableCell>
         <TableCell>{trip.status || "scheduled"}</TableCell>
@@ -301,7 +321,7 @@ export function AdminManageTrips() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  {/* <TableHead>ID</TableHead> */}
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Days of Week</TableHead>
@@ -323,7 +343,7 @@ export function AdminManageTrips() {
 
                   return (
                     <TableRow key={route.id}>
-                      <TableCell>{route.id}</TableCell>
+                      {/* <TableCell>{route.id}</TableCell> */}
                       <TableCell>{route.name || "—"}</TableCell>
                       <TableCell>{route.type || "—"}</TableCell>
                       <TableCell>{daysOfWeek}</TableCell>
@@ -371,7 +391,7 @@ export function AdminManageTrips() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  {/* <TableHead>ID</TableHead> */}
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
@@ -511,6 +531,32 @@ export function AdminManageTrips() {
           onCancel={cancelDeleteRoute}
         />
       )}
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowSuccessDialog(false)}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button variant="destructive" onClick={() => setShowErrorDialog(false)}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { StudentDashboard } from "../components/User/StudentDashboard";
 import { Layout } from "../components/Layout";
 // import { RealTimeTracking } from "../components/RealTimeTracking";
-import { ScheduleSearch } from "../components/User/UserScheduleSearch";
+// import { ScheduleSearch } from "../components/User/UserScheduleSearch";
 import { LostFoundPage } from "../components/User/LostAndFound/LostFoundPage";
 import FeedbackPage from "../components/User/FeedBack/FeedbackPage";
 import { ReserveSeat } from "../components/User/ReserveSeat";
@@ -20,8 +20,8 @@ export default function StudentPage() {
         return <ReserveSeat />;
       // case "tracking":
       //   return <RealTimeTracking />;
-      case "schedule":
-        return <ScheduleSearch />;
+      // case "schedule":
+      //   return <ScheduleSearch />;
       case "user-lost-found":
         return <LostFoundPage />;
       case "feedback":

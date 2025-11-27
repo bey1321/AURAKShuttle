@@ -49,10 +49,17 @@ export function DriverLiveTracking() {
       try {
         setLoading(true);
         const driverTrips = await driverAPI.getMyTrips();
-        // Filter for scheduled and in_progress trips only
+        const today = new Date().toISOString().split("T")[0];
+        // Filter for scheduled and in_progress trips from today onwards
         const activeTrips = driverTrips.filter(
-          (trip: any) => trip.status === 'scheduled' || trip.status === 'in_progress'
+          (trip: any) => (trip.status === 'scheduled' || trip.status === 'in_progress') && trip.date >= today
         );
+        // Sort by date in ascending order
+        activeTrips.sort((a: any, b: any) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateA - dateB;
+        });
         setTrips(activeTrips);
 
         // Check if tripId is in URL params and set it
@@ -91,9 +98,16 @@ export function DriverLiveTracking() {
 
       // Refresh the trips list to update status
       const driverTrips = await driverAPI.getMyTrips();
+      const today = new Date().toISOString().split("T")[0];
       const activeTrips = driverTrips.filter(
-        (trip: any) => trip.status === 'scheduled' || trip.status === 'in_progress'
+        (trip: any) => (trip.status === 'scheduled' || trip.status === 'in_progress') && trip.date >= today
       );
+      // Sort by date in ascending order
+      activeTrips.sort((a: any, b: any) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
       setTrips(activeTrips);
 
       // Clear selected trip if it's no longer active

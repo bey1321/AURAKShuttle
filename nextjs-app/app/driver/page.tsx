@@ -4,7 +4,7 @@ import { DriverDashboard } from "../components/Driver/DriverDashboard";
 import { DriverTrips } from "../components/Driver/DriverTrips";
 import DriverLostFoundPage from "../components/Driver/LostAndFoundPage/DriverLostAndFound";
 import { Layout } from "../components/Layout";
-import { RealTimeTracking } from "../components/RealTimeTracking";
+// import { RealTimeTracking } from "../components/RealTimeTracking";
 import { useState } from "react";
 
 export default function DriverPage() {
@@ -18,8 +18,8 @@ export default function DriverPage() {
         return <DriverTrips />;
       case "driver-lost-found":
         return <DriverLostFoundPage />;
-      case "tracking":
-        return <RealTimeTracking />;
+      // case "tracking":
+      //   return <RealTimeTracking />;
       case "send-alert":
         return <div>Send Alert Page</div>;
       default:

@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 from typing import Annotated
@@ -138,14 +139,28 @@ def postFoundItem(data: FoundItemCreate, db: Session = Depends(get_db), user = D
 @router.get('/found_items', status_code=status.HTTP_200_OK)
 def getFoundItems(db: Session = Depends(get_db)):
     try:
-        items = db.query(Found).all()
-        return {'found_items': items}
-
-    except:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Internal Server Error"
+        # Subquery to find items that have a received claim
+        received_subq = (
+            select(Claim.item_id)
+            .where(Claim.status == "received")
+            .subquery()
         )
+
+        # Select items NOT in that subquery
+        stmt = (
+            select(Found)
+            .where(Found.id.not_in(select(received_subq.c.item_id)))
+        )
+
+        items = db.scalars(stmt).all()
+        return {"found_items": items}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal Server Error: {str(e)}"
+        )
+
 
 
 @router.get('/lost_item', status_code=status.HTTP_200_OK)

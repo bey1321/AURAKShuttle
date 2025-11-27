@@ -212,16 +212,26 @@ export function LostFoundPage() {
         <div>
           <h1 className="text-2xl font-semibold">Lost & Found</h1>
           <p className="text-muted-foreground">
-            View found items and report lost items
+            View items and report lost or found items
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenReportDialog("Lost")}
-          size="lg"
-          className="gap-2"
-        >
-          <Plus className="w-4 h-4" /> Report Lost Item
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => handleOpenReportDialog("Found")}
+            size="lg"
+            className="gap-2"
+            variant="outline"
+          >
+            <Plus className="w-4 h-4" /> Report Found Item
+          </Button>
+          <Button
+            onClick={() => handleOpenReportDialog("Lost")}
+            size="lg"
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" /> Report Lost Item
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-8">

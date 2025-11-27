@@ -80,8 +80,23 @@ export function ReserveSeat() {
       setLoading(true);
       try {
         const data = await userAPI.getAllTrips();
-        setTrips(data || []);
-        setFilteredTrips(data || []);
+
+        // Filter to show only trips from today onwards
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingTrips = (data || []).filter((trip: any) => {
+          const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+          return tripDate >= today;
+        });
+
+        // Sort by date in ascending order (earliest first)
+        upcomingTrips.sort((a: any, b: any) => {
+          const dateA = new Date(a.date || "").getTime();
+          const dateB = new Date(b.date || "").getTime();
+          return dateA - dateB;
+        });
+
+        setTrips(upcomingTrips);
+        setFilteredTrips(upcomingTrips);
       } catch (err) {
         console.error("Failed to fetch trips:", err);
       } finally {
@@ -139,15 +154,49 @@ export function ReserveSeat() {
   const handleReserveSeat = async (tripId: number) => {
     try {
       const response = await userAPI.reserveSeat(tripId);
-      setDialogMessage(response.message || "Seat reserved successfully!");
-      setShowSuccessDialog(true);
-      
-      // Refresh trips
-      const data = await userAPI.getAllTrips();
-      setTrips(data || []);
+
+      // Check if response is successful
+      if (response && response.message) {
+        setDialogMessage(response.message || "Your seat has been reserved successfully!");
+        setShowSuccessDialog(true);
+
+        // Refresh trips to update the UI - only show upcoming trips
+        const data = await userAPI.getAllTrips();
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingTrips = (data || []).filter((trip: any) => {
+          const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+          return tripDate >= today;
+        });
+        setTrips(upcomingTrips);
+      }
     } catch (err: any) {
       console.error(err);
-      setDialogMessage(err?.message || "Failed to reserve seat");
+
+      // Extract user-friendly error message from backend
+      let errorMessage = "Unable to reserve seat. Please try again.";
+
+      // Check for specific error messages from backend
+      if (err?.response?.data?.detail) {
+        const detail = err.response.data.detail;
+
+        // Customize messages for common scenarios
+        if (detail.includes("already registered for this route")) {
+          errorMessage = "You're already registered for this route for the entire semester. No need to book individual trips!";
+        } else if (detail.includes("already reserved")) {
+          errorMessage = "You've already reserved a seat for this trip.";
+        } else if (detail.includes("No available seats") || detail.includes("full")) {
+          errorMessage = "Sorry, this trip is fully booked. Please try another trip.";
+        } else if (detail.includes("No bus assigned")) {
+          errorMessage = "This trip doesn't have a bus assigned yet. Please try again later.";
+        } else {
+          // Use the backend message if it doesn't match known patterns
+          errorMessage = detail;
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      setDialogMessage(errorMessage);
       setShowErrorDialog(true);
     }
   };
@@ -163,18 +212,32 @@ export function ReserveSeat() {
 
     try {
       const response = await userAPI.cancelReservation(selectedTripId);
-      setShowCancelDialog(false);
-      setDialogMessage(response.message || "Reservation cancelled successfully!");
-      setShowSuccessDialog(true);
-      
-      // Refresh trips
-      const data = await userAPI.getAllTrips();
-      setTrips(data || []);
-      setSelectedTripId(null);
+
+      if (response && response.message) {
+        setShowCancelDialog(false);
+        setDialogMessage(response.message || "Your reservation has been cancelled successfully!");
+        setShowSuccessDialog(true);
+
+        // Refresh trips - only show upcoming trips
+        const data = await userAPI.getAllTrips();
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingTrips = (data || []).filter((trip: any) => {
+          const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+          return tripDate >= today;
+        });
+        setTrips(upcomingTrips);
+        setSelectedTripId(null);
+      }
     } catch (err: any) {
       console.error(err);
       setShowCancelDialog(false);
-      setDialogMessage(err?.message || "Failed to cancel reservation");
+
+      // Extract user-friendly error message
+      const errorMessage = err?.response?.data?.detail ||
+                          err?.message ||
+                          "Unable to cancel reservation. Please try again.";
+
+      setDialogMessage(errorMessage);
       setShowErrorDialog(true);
       setSelectedTripId(null);
     }
@@ -190,7 +253,7 @@ export function ReserveSeat() {
       <div>
         <h1 className="text-2xl font-bold">Reserve a Seat</h1>
         <p className="text-muted-foreground">
-          Browse available trips and reserve your seat
+          Browse upcoming trips and reserve your seat
         </p>
       </div>
 
@@ -390,7 +453,7 @@ export function ReserveSeat() {
       <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Error</DialogTitle>
+            <DialogTitle>Unable to Reserve Seat</DialogTitle>
             <DialogDescription>{dialogMessage}</DialogDescription>
           </DialogHeader>
           <div className="flex justify-end">

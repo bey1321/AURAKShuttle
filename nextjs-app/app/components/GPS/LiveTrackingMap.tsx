@@ -95,6 +95,12 @@ export function LiveTrackingMap({
   showPopup = true,
 }: LiveTrackingMapProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const [isClient, setIsClient] = React.useState(false);
+
+  // Ensure map only renders on client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Default center (UAE coordinates as fallback)
   const defaultCenter: [number, number] = [25.7617, 55.9777]; // RAK, UAE
@@ -105,6 +111,26 @@ export function LiveTrackingMap({
 
   const hasValidLocation =
     location && location.latitude !== 0 && location.longitude !== 0;
+
+  // Don't render map until client-side
+  if (!isClient) {
+    return (
+      <div style={{ height, width: "100%", position: "relative", backgroundColor: "#f3f4f6", borderRadius: "8px" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            textAlign: "center",
+            color: "#6b7280",
+          }}
+        >
+          Loading map...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ height, width: "100%", position: "relative" }}>

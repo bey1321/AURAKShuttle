@@ -35,12 +35,7 @@ export function DriverDashboard() {
   const router = useRouter();
 
   const today = new Date().toISOString().split("T")[0];
-  const todaysTrips = trips.filter(
-    (trip) => trip.date === today && !trip.route?.type?.toLowerCase().includes("semester")
-  );
-  const semesterTrips = trips.filter((trip) =>
-    trip.route?.type?.toLowerCase().includes("semester") && trip.date === today
-  );
+  const todaysTrips = trips.filter((trip) => trip.date >= today);
 
   useEffect(() => {
     fetchTrips();
@@ -50,16 +45,21 @@ export function DriverDashboard() {
     try {
       setLoading(true);
       const t = await driverAPI.getMyTrips();
-      // Sort trips: semester-wide first, then by date
-      const sortedTrips = t.sort((a: any, b: any) => {
-        const aIsSemester = a.route?.type?.toLowerCase().includes("semester");
-        const bIsSemester = b.route?.type?.toLowerCase().includes("semester");
-        if (aIsSemester && !bIsSemester) return -1;
-        if (!aIsSemester && bIsSemester) return 1;
+
+      // Filter to show only upcoming trips (from today onwards)
+      const today = new Date().toISOString().split('T')[0];
+      const upcomingTrips = t.filter((trip: any) => {
+        const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+        return tripDate >= today;
+      });
+
+      // Sort trips by date in ascending order (earliest first)
+      const sortedTrips = upcomingTrips.sort((a: any, b: any) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
         return dateA - dateB;
       });
+
       setTrips(sortedTrips);
     } catch (e) {
       console.error(e);
@@ -116,188 +116,17 @@ export function DriverDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Assigned Trips */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Semester-Wide Trips */}
-          {!loading && semesterTrips.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Semester-Wide Trips</CardTitle>
-                <CardDescription>
-                  Registered routes that run throughout the semester
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {semesterTrips.map((trip) => (
-                  <Card
-                    key={trip.id}
-                    className="overflow-hidden transition-all hover:shadow-md cursor-pointer"
-                    onClick={() => setExpandedTrip(expandedTrip === trip.id ? null : trip.id)}
-                  >
-                    <div className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              trip.status === "completed"
-                                ? "bg-green-500"
-                                : trip.status === "in_progress"
-                                ? "bg-blue-500"
-                                : trip.status === "scheduled"
-                                ? "bg-red-400"
-                                : "bg-gray-400"
-                            }`}
-                          >
-                            {trip.status === "completed" ? (
-                              <CheckCircle className="w-5 h-5 text-white" />
-                            ) : trip.status === "in_progress" ? (
-                              <Bus className="w-5 h-5 text-white" />
-                            ) : trip.status === "scheduled" ? (
-                              <Bus className="w-5 h-5 text-white" />
-                            ) : (
-                              <Circle className="w-5 h-5 text-white" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{trip.route?.name || "Route"}</h3>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {new Date(trip.date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {trip.route?.start_time || "N/A"} - {trip.route?.end_time || "N/A"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={trip.status === "completed" ? "default" : "secondary"}
-                            className={`${
-                              trip.status === "completed"
-                                ? "bg-green-500 hover:bg-green-600"
-                                : trip.status === "in_progress"
-                                ? "bg-blue-500 hover:bg-blue-600 text-white"
-                                : trip.status === "scheduled"
-                                ? "bg-red-400 hover:bg-red-500 text-white"
-                                : ""
-                            }`}
-                          >
-                            {trip.status.replace("_", " ").toUpperCase()}
-                          </Badge>
-                          {expandedTrip === trip.id ? (
-                            <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-
-                      {expandedTrip === trip.id && (
-                        <div className="mt-4 pt-4 border-t space-y-3">
-                          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                            <Bus className="w-5 h-5 text-primary" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">Bus Details</p>
-                              <p className="text-sm text-muted-foreground">
-                                {trip.bus?.plate_num || "N/A"} • {trip.bus?.model || "N/A"}
-                              </p>
-                            </div>
-                            <Badge variant="outline">{trip.bus?.no_seats || 0} seats</Badge>
-                          </div>
-
-                          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-primary/5 to-transparent rounded-lg border border-primary/20">
-                            <MapPin className="w-5 h-5 text-primary" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{trip.route?.type || "Standard Route"}</p>
-                            </div>
-                          </div>
-
-                          {trip.route?.days_of_week && trip.route.days_of_week.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground">Operating Days</p>
-                              <div className="flex flex-wrap gap-2">
-                                {trip.route.days_of_week.map((day: string) => (
-                                  <Badge key={day} variant="outline" className="text-xs">
-                                    {day.substring(0, 3)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="pt-2">
-                            {trip.status === "scheduled" && (
-                              <Button
-                                className="w-full"
-                                size="lg"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartTrip(trip.id);
-                                }}
-                              >
-                                <Navigation className="w-4 h-4 mr-2" />
-                                Start Trip
-                              </Button>
-                            )}
-                            {trip.status === "in_progress" && (
-                              <div className="flex gap-2">
-                                <Button
-                                  className="flex-1"
-                                  size="lg"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleUpdateLocation(trip.id);
-                                  }}
-                                >
-                                  <MapPin className="w-4 h-4 mr-2" />
-                                  Go to Tracking
-                                </Button>
-                                <Button
-                                  className="flex-1"
-                                  variant="destructive"
-                                  size="lg"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEndTrip(trip.id);
-                                  }}
-                                  disabled={endingTripId === trip.id}
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  {endingTripId === trip.id ? "Ending..." : "End Trip"}
-                                </Button>
-                              </div>
-                            )}
-                            {trip.status === "completed" && (
-                              <Button className="w-full" variant="ghost" size="lg" disabled>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Trip Completed
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Today's Trips */}
+          {/* Upcoming Trips */}
           <Card>
             <CardHeader>
-              <CardTitle>Today's Trips</CardTitle>
-              <CardDescription>Your schedule for today</CardDescription>
+              <CardTitle>Upcoming Trips</CardTitle>
+              <CardDescription>Your scheduled trips from today onwards</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {loading ? (
                 <div className="text-sm text-muted-foreground">Loading...</div>
               ) : todaysTrips.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No trips scheduled for today.</div>
+                <div className="text-sm text-muted-foreground">No upcoming trips scheduled.</div>
               ) : (
                 todaysTrips.map((trip) => (
                   <Card
@@ -402,7 +231,7 @@ export function DriverDashboard() {
                             </div>
                           )}
 
-                          <div className="pt-2">
+                          {/* <div className="pt-2">
                             {trip.status === "scheduled" && (
                               <Button
                                 className="w-full"
@@ -450,7 +279,7 @@ export function DriverDashboard() {
                                 Trip Completed
                               </Button>
                             )}
-                          </div>
+                          </div> */}
                         </div>
                       )}
                     </div>

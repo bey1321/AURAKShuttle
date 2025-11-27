@@ -25,12 +25,21 @@ export function DriverTrips() {
       try {
         setLoading(true);
         const t = await driverAPI.getMyTrips();
-        // Sort trips by date in ascending order
-        const sortedTrips = t.sort((a: any, b: any) => {
+
+        // Filter to show only upcoming trips (from today onwards)
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingTrips = t.filter((trip: any) => {
+          const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+          return tripDate >= today;
+        });
+
+        // Sort trips by date in ascending order (earliest first)
+        const sortedTrips = upcomingTrips.sort((a: any, b: any) => {
           const dateA = new Date(a.date).getTime();
           const dateB = new Date(b.date).getTime();
           return dateA - dateB;
         });
+
         setTrips(sortedTrips);
       } catch (e) {
         console.error(e);
@@ -63,12 +72,12 @@ export function DriverTrips() {
         />
       </div>
 
-      {/* All Trips Section */}
+      {/* Upcoming Trips Section */}
       <Card>
         <CardHeader>
-          <CardTitle>All Trips</CardTitle>
+          <CardTitle>Upcoming Trips</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Your assigned shuttle trips
+            Your assigned upcoming shuttle trips
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -76,7 +85,7 @@ export function DriverTrips() {
             <div className="text-sm text-muted-foreground">Loading...</div>
           ) : trips.length === 0 ? (
             <div className="text-sm text-muted-foreground">
-              No trips assigned.
+              No upcoming trips assigned.
             </div>
           ) : (
             trips

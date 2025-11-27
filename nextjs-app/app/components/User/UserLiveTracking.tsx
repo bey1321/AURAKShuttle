@@ -59,9 +59,24 @@ export function UserLiveTracking() {
         setTripsLoading(true);
         const trips = await tripAPI.getMyTrips();
         if (!mounted) return;
-        setMyTrips(trips || []);
-        if ((trips || []).length > 0) {
-          setSelectedTripId((prev) => prev ?? trips[0].id);
+
+        // Filter trips to show only from today onwards
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingTrips = (trips || []).filter((trip: any) => {
+          const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+          return tripDate >= today;
+        });
+
+        // Sort by date in ascending order (earliest first)
+        upcomingTrips.sort((a: any, b: any) => {
+          const dateA = a.date ? new Date(a.date).getTime() : 0;
+          const dateB = b.date ? new Date(b.date).getTime() : 0;
+          return dateA - dateB;
+        });
+
+        setMyTrips(upcomingTrips);
+        if (upcomingTrips.length > 0) {
+          setSelectedTripId((prev) => prev ?? upcomingTrips[0].id);
         }
       } catch (e: any) {
         console.error("Error fetching user trips for live tracking:", e);
@@ -99,7 +114,7 @@ export function UserLiveTracking() {
                 </Badge>
               )}
             </div>
-            <div className="ml-4 flex items-center gap-3">
+            <div className="ml-4 flex items-center gap-3 relative z-50">
               <label className="text-sm text-muted-foreground">Track Shuttle:</label>
               <select
                 value={selectedTripId ?? ""}
@@ -107,7 +122,7 @@ export function UserLiveTracking() {
                   setSelectedTripId(Number(e.target.value));
                   setCurrentLocation(null); // Reset location when changing dropdown
                 }}
-                className="border border-border rounded px-2 py-1 text-sm"
+                className="border border-border rounded px-2 py-1 text-sm relative z-50"
               >
                 {tripsLoading ? (
                   <option value="" disabled>

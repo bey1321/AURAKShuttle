@@ -177,7 +177,14 @@ export function AdminLiveMap({
   return (
     <div
       ref={mapContainerRef}
-      style={{ height, width: "100%", borderRadius: "8px" }}
+      style={{
+        height,
+        width: "100%",
+        borderRadius: "8px",
+        position: "relative",
+        zIndex: 0
+      }}
+      className="leaflet-map-container"
     />
   );
 }
