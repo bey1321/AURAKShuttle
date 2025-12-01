@@ -12,6 +12,11 @@ import {
   SelectContent,
   SelectItem,
   SelectValue,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "../../ui";
 import { useEffect, useState } from "react";
 import { adminAPI } from "../../../lib/api";
@@ -73,6 +78,11 @@ export default function CreateSemesterTrips({
   const [buses, setBuses] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Dialog states
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
 
   const daysOfWeek = watch("days_of_week");
   const selectedTerminals = watch("terminals");
@@ -177,18 +187,19 @@ export default function CreateSemesterTrips({
 
       if (editingRoute) {
         await adminAPI.updateSemesterTrip(editingRoute.id, payload);
-        alert("✅ Semester route updated successfully!");
+        setDialogMessage("Semester route updated successfully!");
       } else {
         await adminAPI.createSemesterTrips(payload);
-        alert("✅ Semester trips created successfully!");
+        setDialogMessage("Semester trips created successfully!");
       }
 
-      onSuccess?.();
+      setShowSuccessDialog(true);
     } catch (e: any) {
-      alert(
+      setDialogMessage(
         e?.message ||
-          `❌ Failed to ${editingRoute ? "update" : "create"} semester trips`
+          `Failed to ${editingRoute ? "update" : "create"} semester trips`
       );
+      setShowErrorDialog(true);
     } finally {
       setSubmitting(false);
     }
@@ -485,6 +496,40 @@ export default function CreateSemesterTrips({
           Cancel
         </Button>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={(open) => {
+        setShowSuccessDialog(open);
+        if (!open) {
+          onSuccess?.();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => {
+              setShowSuccessDialog(false);
+              onSuccess?.();
+            }}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button variant="destructive" onClick={() => setShowErrorDialog(false)}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

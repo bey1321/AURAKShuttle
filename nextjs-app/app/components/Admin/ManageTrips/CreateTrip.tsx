@@ -12,6 +12,11 @@ import {
   SelectContent,
   SelectItem,
   SelectValue,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "../../ui";
 import { adminAPI } from "../../../lib/api";
 import { useState, useEffect } from "react";
@@ -28,6 +33,11 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [buses, setBuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Dialog states
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
 
   const {
     register,
@@ -76,9 +86,10 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
         setTerminals(terminalsData);
         setDrivers(driversData);
         setBuses(busesData);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching data:", error);
-        alert("Failed to load data. Please try again later.");
+        setDialogMessage(error?.message || "Failed to load data. Please try again later.");
+        setShowErrorDialog(true);
       } finally {
         setLoading(false);
       }
@@ -113,11 +124,11 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
       };
 
       await adminAPI.createSingleTrip(payload);
-      alert("✅ Trip created successfully!");
-      if (onSuccess) onSuccess();
-      else onCancel();
+      setDialogMessage("Trip created successfully!");
+      setShowSuccessDialog(true);
     } catch (e: any) {
-      alert(e?.message || "❌ Failed to create trip");
+      setDialogMessage(e?.message || "Failed to create trip");
+      setShowErrorDialog(true);
     }
   };
 
@@ -311,6 +322,42 @@ export default function CreateTrip({ onCancel, onSuccess }: TripFormProps) {
           Cancel
         </Button>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={(open) => {
+        setShowSuccessDialog(open);
+        if (!open) {
+          if (onSuccess) onSuccess();
+          else onCancel();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => {
+              setShowSuccessDialog(false);
+              if (onSuccess) onSuccess();
+              else onCancel();
+            }}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button variant="destructive" onClick={() => setShowErrorDialog(false)}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

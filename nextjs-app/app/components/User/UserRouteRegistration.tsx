@@ -72,12 +72,67 @@ export default function UserRouteRegistration() {
     setSelectedRoute(route_id);
     try {
       const res = await userAPI.registerRouteRequest(route_id);
-      toast.success(res.message || "Registration requested");
 
-      // update registrations locally to show requested state
-      setRegistrations((prev) => [...prev, { id: Date.now(), student_id: 0, route_id, status: "requested" }]);
-    } catch {
-      toast.error("Registration failed");
+      // Check if the backend response was successful
+      if (res && res.message) {
+        // Handle different response statuses from backend
+        if (res.status === 'approved') {
+          // User is already registered and approved
+          toast.info("Already Registered", {
+            duration: 5000,
+            description: res.message,
+          });
+          // Update local state to show approved status
+          setRegistrations((prev) => {
+            const existing = prev.find(r => r.route_id === route_id);
+            if (!existing) {
+              return [...prev, { id: Date.now(), student_id: 0, route_id, status: "approved" }];
+            }
+            return prev;
+          });
+        } else if (res.status === 'pending') {
+          // User already has a pending request
+          toast.warning("Pending Request", {
+            duration: 5000,
+            description: res.message,
+          });
+          // Don't add duplicate - request already exists
+        } else if (res.status === 'rejected') {
+          // Previous request was rejected
+          toast.error("Previous Request Rejected", {
+            duration: 6000,
+            description: res.message,
+          });
+        } else {
+          // New registration request created successfully
+          toast.success("Request Submitted Successfully!", {
+            duration: 5000,
+            description: res.message,
+          });
+
+          // Only update registrations locally after successful backend response
+          setRegistrations((prev) => [
+            ...prev,
+            { id: res.registration_id || Date.now(), student_id: 0, route_id, status: "requested" }
+          ]);
+        }
+      } else {
+        // Handle unexpected response format
+        throw new Error("Unexpected response from server");
+      }
+    } catch (error: any) {
+      // Show user-friendly error message
+      const errorMessage = error?.response?.data?.detail ||
+                          error?.response?.data?.message ||
+                          error?.message ||
+                          "Unable to process your registration request. Please try again later.";
+
+      toast.error("Registration Failed", {
+        duration: 5000,
+        description: errorMessage,
+      });
+
+      console.error("Registration error:", error);
     } finally {
       setSelectedRoute(null);
     }

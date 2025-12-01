@@ -18,14 +18,20 @@ async function apiCall<T>(
 
   // handle non-OK responses safely
   if (!response.ok) {
-    let detail = "Unknown error";
+    let errorData;
     try {
-      const err = await response.json();
-      detail = err.detail || JSON.stringify(err);
+      errorData = await response.json();
     } catch {
-      detail = response.statusText;
+      errorData = { detail: response.statusText };
     }
-    throw new Error(`API ${response.status}: ${detail}`);
+
+    // Create a proper error object that preserves backend error structure
+    const error: any = new Error(errorData.detail || errorData.message || "Request failed");
+    error.response = {
+      status: response.status,
+      data: errorData
+    };
+    throw error;
   }
 
   try {
@@ -370,7 +376,7 @@ export const userAPI = {
       body: JSON.stringify(data),
     }),
     registerRouteRequest: (route_id: number) =>
-      apiCall<{ message: string }>(`/user/route/${route_id}`, {
+      apiCall<{ message: string; status?: string; registration_id?: number }>(`/user/route/${route_id}`, {
         method: "POST",
       }),
 };

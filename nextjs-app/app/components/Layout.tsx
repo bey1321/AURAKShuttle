@@ -39,6 +39,7 @@ export function Layout({
     student: [
       { icon: Home, label: "User Dashboard", id: "user-dashboard" },
       { icon: MessageSquare, label: "Register for a Trip", id: "user-route-registration" },
+      { icon: Calendar, label: "Reserve Seat", id: "reserve-seat" },
       { icon: MapPin, label: "Track Shuttle", id: "student-live-tracking" },
       { icon: Calendar, label: "Schedule", id: "schedule" },
       { icon: Package, label: "Lost & Found", id: "user-lost-found" },

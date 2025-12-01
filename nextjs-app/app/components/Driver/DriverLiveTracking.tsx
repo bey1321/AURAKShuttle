@@ -49,10 +49,17 @@ export function DriverLiveTracking() {
       try {
         setLoading(true);
         const driverTrips = await driverAPI.getMyTrips();
-        // Filter for scheduled and in_progress trips only
+        const today = new Date().toISOString().split("T")[0];
+        // Filter for scheduled and in_progress trips from today onwards
         const activeTrips = driverTrips.filter(
-          (trip: any) => trip.status === 'scheduled' || trip.status === 'in_progress'
+          (trip: any) => (trip.status === 'scheduled' || trip.status === 'in_progress') && trip.date >= today
         );
+        // Sort by date in ascending order
+        activeTrips.sort((a: any, b: any) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateA - dateB;
+        });
         setTrips(activeTrips);
 
         // Check if tripId is in URL params and set it
@@ -91,9 +98,16 @@ export function DriverLiveTracking() {
 
       // Refresh the trips list to update status
       const driverTrips = await driverAPI.getMyTrips();
+      const today = new Date().toISOString().split("T")[0];
       const activeTrips = driverTrips.filter(
-        (trip: any) => trip.status === 'scheduled' || trip.status === 'in_progress'
+        (trip: any) => (trip.status === 'scheduled' || trip.status === 'in_progress') && trip.date >= today
       );
+      // Sort by date in ascending order
+      activeTrips.sort((a: any, b: any) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB;
+      });
       setTrips(activeTrips);
 
       // Clear selected trip if it's no longer active
@@ -296,58 +310,7 @@ export function DriverLiveTracking() {
         </p>
       </div>
 
-      {/* Active Shuttles Count */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Shuttles</p>
-                <h3>3</h3>
-              </div>
-              <Bus className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Passengers
-                </p>
-                <h3>84</h3>
-              </div>
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Occupancy</p>
-                <h3>70%</h3>
-              </div>
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Routes Active</p>
-                <h3>4</h3>
-              </div>
-              <Navigation className="w-8 h-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      
 
       {/* Map View - Leaflet */}
       <div className="w-full">

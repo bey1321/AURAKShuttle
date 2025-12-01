@@ -59,7 +59,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
 
   const [stats, setStats] = useState({
     totalTrips: 0,
-    activeDrivers: 0,
+    totalDrivers: 0,
     totalStudents: 0,
     registrationRequests: 0,
     lostItemClaims: 0,
@@ -78,10 +78,14 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
         lostFoundAPI.getAdminFoundAndClaims().catch(() => []),
       ]);
 
-      // Count active drivers (assuming drivers with status 'active' or similar)
-      const activeDriversCount = Array.isArray(driversData) 
-        ? driversData.filter((d: any) => d.status === 'Active' || d.status === 'active').length
+      console.log("Drivers data:", driversData);
+
+      // Count total drivers
+      const totalDriversCount = Array.isArray(driversData)
+        ? driversData.length
         : 0;
+
+      console.log("Total drivers count:", totalDriversCount);
 
       // Count total students (users with role 'student')
       const totalStudentsCount = Array.isArray(usersData)
@@ -103,7 +107,7 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
 
       setStats({
         totalTrips: Array.isArray(tripsData) ? tripsData.length : 0,
-        activeDrivers: activeDriversCount,
+        totalDrivers: totalDriversCount,
         totalStudents: totalStudentsCount,
         registrationRequests: registrationRequestsCount,
         lostItemClaims: claimsCount,
@@ -282,8 +286,8 @@ export function AdminDashboard({ onNavigate }: { onNavigate?: (page: string) => 
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Active Drivers</p>
-                <h3>{statsLoading ? "..." : stats.activeDrivers}</h3>
+                <p className="text-sm text-muted-foreground">Total Drivers</p>
+                <h3>{statsLoading ? "..." : stats.totalDrivers}</h3>
               </div>
               <Users className="w-8 h-8 text-primary" />
             </div>

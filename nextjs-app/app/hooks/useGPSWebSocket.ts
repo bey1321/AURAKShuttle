@@ -199,21 +199,23 @@ export function useGPSWebSocket({
 
       ws.onmessage = (event) => {
         try {
+          console.log(`[GPS WebSocket] Raw message received:`, event.data);
           const message: WebSocketMessage = JSON.parse(event.data);
-          console.log(`[GPS WebSocket] Message received:`, message.type, message);
-          
+          console.log(`[GPS WebSocket] Parsed message:`, message.type, message);
+
           if (message.type === "error") {
             const errorMsg = message.message || "Unknown error";
-            console.error(`[GPS WebSocket] Error from server:`, errorMsg);
+            console.log(`[GPS WebSocket] Server message:`, errorMsg);
             setLastError(errorMsg);
             setConnectionStatus("error");
-            // Don't call onError here to prevent infinite loops, just set the error state
+            // Call onError to trigger user-friendly error translation
             if (onError) {
               onError(errorMsg);
             }
             // Close connection on error to prevent reconnection loops
+            // Use 4000 (custom error code in valid range 3000-4999)
             if (wsRef.current) {
-              wsRef.current.close(1008, errorMsg); // 1008 = Policy Violation
+              wsRef.current.close(4000, "Server error");
             }
           } else {
             // Clear any previous errors on successful message
@@ -221,8 +223,10 @@ export function useGPSWebSocket({
             onMessage?.(message);
           }
         } catch (error) {
-          console.error("[GPS WebSocket] Error parsing message:", error, event.data);
-          const errorMsg = "Failed to parse message";
+          console.error("[GPS WebSocket] Error parsing message:", error);
+          console.error("[GPS WebSocket] Raw message data:", event.data);
+          console.error("[GPS WebSocket] Message data type:", typeof event.data);
+          const errorMsg = `Failed to parse server message: ${event.data}`;
           setLastError(errorMsg);
           onError?.(errorMsg);
         }
@@ -255,18 +259,20 @@ export function useGPSWebSocket({
         setConnectionStatus("disconnected");
         onDisconnect?.();
 
-        // Don't reconnect on authentication errors (1008), policy violations, or if manually closed (1000)
+        // Don't reconnect on authentication errors, policy violations, or if manually closed
         // Also don't reconnect if we've exceeded max attempts
-        const isAuthError = event.code === 1008; // Policy violation (authentication/authorization)
+        const isAuthError = event.code === 1008; // Policy violation (authentication/authorization) - legacy
+        const isCustomError = event.code === 4000; // Custom error code for server-side errors
         const isServerError = event.code === 1011; // Internal server error
         const isManualClose = event.code === 1000; // Normal closure
         const isAbnormalClose = event.code === 1006; // Abnormal closure (no close frame)
-        
-        // Only reconnect on network errors, not on auth/server errors
-        const shouldReconnect = enabled && 
-                                !isAuthError && 
+
+        // Only reconnect on network errors, not on auth/server/custom errors
+        const shouldReconnect = enabled &&
+                                !isAuthError &&
+                                !isCustomError &&
                                 !isServerError &&
-                                !isManualClose && 
+                                !isManualClose &&
                                 reconnectAttemptsRef.current < maxReconnectAttempts;
 
         if (shouldReconnect) {

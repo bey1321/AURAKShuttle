@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import React, { useEffect, useRef, useState } from "react";
 import type { LocationData } from "../../hooks/useGPSWebSocket";
+
+// Type definition for Leaflet
+type LeafletModule = typeof import("leaflet");
 
 interface AdminLiveMapProps {
   locations: LocationData[];
@@ -16,27 +17,40 @@ export function AdminLiveMap({
   height = "500px",
   zoom = 13,
 }: AdminLiveMapProps) {
-  const mapRef = useRef<L.Map | null>(null);
+  const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<Map<number, L.Marker>>(new Map());
-  const polylinesRef = useRef<Map<number, L.Polyline>>(new Map());
+  const markersRef = useRef<Map<number, any>>(new Map());
+  const polylinesRef = useRef<Map<number, any>>(new Map());
+  const [leaflet, setLeaflet] = useState<LeafletModule | null>(null);
+
+  // Load Leaflet dynamically
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      Promise.all([
+        import("leaflet"),
+        import("leaflet/dist/leaflet.css")
+      ]).then(([L]) => {
+        setLeaflet(L);
+      });
+    }
+  }, []);
 
   // Initialize map only once
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current || mapRef.current || !leaflet) return;
 
     // Default center (RAK, UAE)
     const defaultCenter: [number, number] = [25.7617, 55.9777];
 
     // Create map
-    const map = L.map(mapContainerRef.current, {
+    const map = leaflet.map(mapContainerRef.current, {
       center: defaultCenter,
       zoom: zoom,
       zoomControl: true,
     });
 
     // Add tile layer
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    leaflet.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: "abcd",
       maxZoom: 20,
@@ -50,11 +64,11 @@ export function AdminLiveMap({
         mapRef.current = null;
       }
     };
-  }, [zoom]);
+  }, [zoom, leaflet]);
 
   // Update markers and polylines when locations change
   useEffect(() => {
-    if (!mapRef.current || locations.length === 0) return;
+    if (!mapRef.current || !leaflet || locations.length === 0) return;
 
     const map = mapRef.current;
     const currentMarkers = markersRef.current;
@@ -86,7 +100,7 @@ export function AdminLiveMap({
       const position: [number, number] = [location.latitude, location.longitude];
 
       // Create bus icon
-      const busIcon = createBusIcon(location.status);
+      const busIcon = createBusIcon(leaflet, location.status);
 
       // Check if marker already exists
       let marker = currentMarkers.get(location.trip_id);
@@ -97,7 +111,7 @@ export function AdminLiveMap({
         marker.setIcon(busIcon);
       } else {
         // Create new marker
-        marker = L.marker(position, { icon: busIcon });
+        marker = leaflet.marker(position, { icon: busIcon });
 
         // Add popup
         const popupContent = `
@@ -129,7 +143,7 @@ export function AdminLiveMap({
           polyline.setLatLngs(pathCoordinates);
         } else {
           // Create new polyline
-          polyline = L.polyline(pathCoordinates, {
+          polyline = leaflet.polyline(pathCoordinates, {
             color: getPathColor(location.trip_id),
             weight: 3,
             opacity: 0.6,
@@ -152,18 +166,25 @@ export function AdminLiveMap({
         map.setView([validLocations[0].latitude, validLocations[0].longitude], 15);
       } else if (validLocations.length > 1) {
         // Multiple buses - fit bounds
-        const bounds = L.latLngBounds(
+        const bounds = leaflet.latLngBounds(
           validLocations.map((loc) => [loc.latitude, loc.longitude] as [number, number])
         );
         map.fitBounds(bounds, { padding: [50, 50] });
       }
     }
-  }, [locations]);
+  }, [locations, leaflet]);
 
   return (
     <div
       ref={mapContainerRef}
-      style={{ height, width: "100%", borderRadius: "8px" }}
+      style={{
+        height,
+        width: "100%",
+        borderRadius: "8px",
+        position: "relative",
+        zIndex: 0
+      }}
+      className="leaflet-map-container"
     />
   );
 }
@@ -184,7 +205,7 @@ function getPathColor(tripId: number): string {
 }
 
 // Helper function to create custom bus icon
-function createBusIcon(status?: string) {
+function createBusIcon(leaflet: LeafletModule, status?: string) {
   const color =
     status === "in_progress" ? "#3b82f6" :
     status === "stopped" ? "#ef4444" :
@@ -213,7 +234,7 @@ function createBusIcon(status?: string) {
     </div>
   `;
 
-  return L.divIcon({
+  return leaflet.divIcon({
     className: "custom-bus-marker",
     html: html,
     iconSize: [40, 40],

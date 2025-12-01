@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Filter, Plus, Search } from "lucide-react";
+import { Filter, Plus, Search, Eye, Hand } from "lucide-react";
 import {
   Card,
   CardHeader,
@@ -49,6 +49,9 @@ export default function DriverLostFoundPage() {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState<LostFoundItem | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
 
   const [formData, setFormData] = useState({
     obj_name: "",
@@ -132,7 +135,8 @@ export default function DriverLostFoundPage() {
 
   const handleSubmitReport = async () => {
     if (!formData.obj_name || !formData.obj_description || !formData.obj_type) {
-      alert("Please fill in all required fields");
+      setDialogMessage("Please fill in all required fields");
+      setShowErrorDialog(true);
       return;
     }
 
@@ -142,8 +146,9 @@ export default function DriverLostFoundPage() {
       } else {
         await lostFoundAPI.reportLostItem(formData);
       }
-      
-      alert(`${reportType} item reported successfully!`);
+
+      setDialogMessage(`${reportType} item reported successfully!`);
+      setShowSuccessDialog(true);
       setFormData({
         obj_name: "",
         obj_description: "",
@@ -151,13 +156,13 @@ export default function DriverLostFoundPage() {
         trip_id: 0,
       });
       setShowReportDialog(false);
-      
+
       // Refetch items to get updated list
       const [lostResponse, foundResponse] = await Promise.all([
         lostFoundAPI.getLostItems(),
         lostFoundAPI.getFoundItems(),
       ]);
-      
+
       const lostItems = ((lostResponse as any)["lost items"] || []).map((item: any) => ({
         ...item,
         type: "Lost" as const,
@@ -166,11 +171,12 @@ export default function DriverLostFoundPage() {
         ...item,
         type: "Found" as const,
       }));
-      
+
       setItems([...lostItems, ...foundItems]);
     } catch (error: any) {
       console.error("Error reporting item:", error);
-      alert(error?.message || "Failed to report item. Please try again.");
+      setDialogMessage(error?.message || "Failed to report item. Please try again.");
+      setShowErrorDialog(true);
     }
   };
 
@@ -262,13 +268,15 @@ export default function DriverLostFoundPage() {
         <div className="space-y-8">
           {/* Found Items Section */}
           <section>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-2 h-10 bg-green-500 rounded-full"></div>
-              <div>
-                <h2 className="text-2xl font-bold">Found Items</h2>
-                <p className="text-base text-muted-foreground">Items found and waiting to be claimed</p>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-12 bg-green-500 rounded-full"></div>
+                <div>
+                  <h2 className="text-2xl font-bold">Found Items</h2>
+                  <p className="text-sm text-muted-foreground">Items found and waiting to be claimed</p>
+                </div>
               </div>
-              <Badge variant="outline" className="ml-auto text-base px-3 py-1">
+              <Badge variant="secondary" className="text-base px-4 py-2 font-semibold">
                 {filteredItems("Found").length} items
               </Badge>
             </div>
@@ -281,44 +289,56 @@ export default function DriverLostFoundPage() {
                 </Card>
               ) : (
                 filteredItems("Found").map((item) => (
-                  <Card 
-                    key={item.id} 
-                    className="hover:shadow-lg transition-all border-l-4 border-l-green-500 cursor-pointer bg-green-50/30"
-                    onClick={() => {
-                      setSelectedItem(item);
-                      setShowViewDialog(true);
-                    }}
+                  <Card
+                    key={item.id}
+                    className="hover:shadow-md transition-all cursor-pointer border border-border"
                   >
-                    <CardHeader className="pb-4">
+                    <CardContent className="pt-6 space-y-4">
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          {item.obj_name}
-                        </CardTitle>
+                        <h3 className="text-lg font-semibold">{item.obj_name}</h3>
                         <Badge
-                          variant="outline"
-                          className={item.status === "Claimed" ? "bg-green-100 text-green-800 border-green-300 text-sm font-semibold" : "bg-amber-100 text-amber-800 border-amber-300 text-sm font-semibold"}
+                          variant="secondary"
+                          className={item.status === "Claimed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}
                         >
                           {item.status || "Unclaimed"}
                         </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-base text-gray-700 line-clamp-2 leading-relaxed">{item.obj_description}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary" className="text-sm px-2.5 py-0.5">
-                          {item.obj_type}
-                        </Badge>
-                        {item.trip_id && (
-                          <span className="text-sm text-muted-foreground font-medium">Trip #{item.trip_id}</span>
-                        )}
+
+                      <p className="text-sm text-muted-foreground line-clamp-2">{item.obj_description}</p>
+
+                      <div className="space-y-2 text-sm">
+                        <p className="text-muted-foreground">
+                          <span className="font-medium text-foreground">Location:</span> {item.trip_id ? `Shuttle Route ${item.trip_id}` : "N/A"}
+                        </p>
+                        <p className="text-muted-foreground">
+                          <span className="font-medium text-foreground">Reported by:</span> Driver
+                        </p>
                       </div>
-                      <div className="pt-3 border-t">
-                        {item.date && (
-                          <p className="text-sm text-gray-600">
-                            Date: <span className="font-semibold text-gray-800">{new Date(item.date).toLocaleDateString()}</span>
-                          </p>
-                        )}
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setShowViewDialog(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        {/* <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Handle claim action
+                          }}
+                        >
+                          <Hand className="w-4 h-4 mr-1" />
+                          Claim
+                        </Button> */}
                       </div>
                     </CardContent>
                   </Card>
@@ -329,13 +349,15 @@ export default function DriverLostFoundPage() {
 
           {/* Lost Items Section */}
           <section>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-2 h-10 bg-red-500 rounded-full"></div>
-              <div>
-                <h2 className="text-2xl font-bold">Lost Items</h2>
-                <p className="text-base text-muted-foreground">Items reported as lost by passengers</p>
+            <div className="flex items-center justify-between mb-6 pb-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-12 bg-red-500 rounded-full"></div>
+                <div>
+                  <h2 className="text-2xl font-bold">Lost Items</h2>
+                  <p className="text-sm text-muted-foreground">Items reported as lost by passengers</p>
+                </div>
               </div>
-              <Badge variant="outline" className="ml-auto text-base px-3 py-1">
+              <Badge variant="secondary" className="text-base px-4 py-2 font-semibold">
                 {filteredItems("Lost").length} items
               </Badge>
             </div>
@@ -348,44 +370,56 @@ export default function DriverLostFoundPage() {
                 </Card>
               ) : (
                 filteredItems("Lost").map((item) => (
-                  <Card 
-                    key={item.id} 
-                    className="hover:shadow-lg transition-all border-l-4 border-l-red-500 cursor-pointer bg-red-50/30"
-                    onClick={() => {
-                      setSelectedItem(item);
-                      setShowViewDialog(true);
-                    }}
+                  <Card
+                    key={item.id}
+                    className="hover:shadow-md transition-all cursor-pointer border border-border"
                   >
-                    <CardHeader className="pb-4">
+                    <CardContent className="pt-6 space-y-4">
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-xl font-bold flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                          {item.obj_name}
-                        </CardTitle>
+                        <h3 className="text-lg font-semibold">{item.obj_name}</h3>
                         <Badge
-                          variant="outline"
-                          className={item.status === "Claimed" ? "bg-green-100 text-green-800 border-green-300 text-sm font-semibold" : "bg-amber-100 text-amber-800 border-amber-300 text-sm font-semibold"}
+                          variant="secondary"
+                          className={item.status === "Claimed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}
                         >
                           {item.status || "Unclaimed"}
                         </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-base text-gray-700 line-clamp-2 leading-relaxed">{item.obj_description}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary" className="text-sm px-2.5 py-0.5">
-                          {item.obj_type}
-                        </Badge>
-                        {item.trip_id && (
-                          <span className="text-sm text-muted-foreground font-medium">Trip #{item.trip_id}</span>
-                        )}
+
+                      <p className="text-sm text-muted-foreground line-clamp-2">{item.obj_description}</p>
+
+                      <div className="space-y-2 text-sm">
+                        <p className="text-muted-foreground">
+                          <span className="font-medium text-foreground">Location:</span> {item.trip_id ? `Shuttle Route ${item.trip_id}` : "N/A"}
+                        </p>
+                        <p className="text-muted-foreground">
+                          <span className="font-medium text-foreground">Reported by:</span> Passenger
+                        </p>
                       </div>
-                      <div className="pt-3 border-t">
-                        {item.date && (
-                          <p className="text-sm text-gray-600">
-                            Date: <span className="font-semibold text-gray-800">{new Date(item.date).toLocaleDateString()}</span>
-                          </p>
-                        )}
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setShowViewDialog(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        {/* <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Handle claim action
+                          }}
+                        >
+                          <Hand className="w-4 h-4 mr-1" />
+                          Claim
+                        </Button> */}
                       </div>
                     </CardContent>
                   </Card>
@@ -506,6 +540,36 @@ export default function DriverLostFoundPage() {
               </DialogContent>
             </Dialog>
           )}
+
+          {/* Success Dialog */}
+          <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Success!</DialogTitle>
+                <DialogDescription>{dialogMessage}</DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end">
+                <Button onClick={() => setShowSuccessDialog(false)}>
+                  OK
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Error Dialog */}
+          <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Error</DialogTitle>
+                <DialogDescription>{dialogMessage}</DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setShowErrorDialog(false)}>
+                  OK
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
     </div>
   );
 }

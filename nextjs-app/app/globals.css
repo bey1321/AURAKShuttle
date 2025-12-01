@@ -254,3 +254,54 @@ html {
     @apply bg-background text-foreground;
   }
 }
+
+/* Leaflet z-index fixes - prevent map from overlaying other content */
+.leaflet-map-container {
+  isolation: isolate;
+  contain: layout style;
+}
+
+/* Reset all Leaflet panes to stay within their container */
+.leaflet-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-tile-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-overlay-pane {
+  z-index: 2 !important;
+}
+
+.leaflet-shadow-pane {
+  z-index: 3 !important;
+}
+
+.leaflet-marker-pane {
+  z-index: 4 !important;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 5 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 6 !important;
+}
+
+/* Keep popups contained within the map */
+.leaflet-popup {
+  position: absolute !important;
+}
+
+/* Map controls */
+.leaflet-control {
+  z-index: 7 !important;
+}
+
+/* Prevent the map container from creating issues */
+.leaflet-container {
+  position: relative !important;
+  z-index: 1 !important;
+}

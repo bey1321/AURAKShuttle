@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Eye, Trash2, CheckCircle, Plus, Users } from "lucide-react";
+import { Eye, Trash2, Plus, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -52,6 +52,10 @@ export function AdminLostFoundPage() {
   // Dialog states
   const [showLostDialog, setShowLostDialog] = useState(false);
   const [showFoundDialog, setShowFoundDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
 
   // New item states
   const [newLostItem, setNewLostItem] = useState({
@@ -103,26 +107,30 @@ export function AdminLostFoundPage() {
   const handleReportLost = async () => {
     try {
       await lostFoundAPI.reportLostItem(newLostItem);
-      alert("Lost item reported successfully!");
+      setDialogMessage("Lost item reported successfully!");
+      setShowSuccessDialog(true);
       setShowLostDialog(false);
       fetchItems();
       setNewLostItem({ obj_name: "", obj_description: "", obj_type: "", trip_id: 0 });
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Failed to report lost item.");
+      setDialogMessage(err?.message || "Failed to report lost item.");
+      setShowErrorDialog(true);
     }
   };
 
   const handleReportFound = async () => {
     try {
       await lostFoundAPI.reportFoundItem(newFoundItem);
-      alert("Found item reported successfully!");
+      setDialogMessage("Found item reported successfully!");
+      setShowSuccessDialog(true);
       setShowFoundDialog(false);
       fetchItems();
       setNewFoundItem({ obj_name: "", obj_description: "", obj_type: "", trip_id: 0 });
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Failed to report found item.");
+      setDialogMessage(err?.message || "Failed to report found item.");
+      setShowErrorDialog(true);
     }
   };
 
@@ -141,12 +149,14 @@ export function AdminLostFoundPage() {
           data: { claimId, itemId: currentItemForClaims?.id, claimer: found?.claimer },
         });
       } catch {}
-      alert("Claim approved successfully!");
+      setDialogMessage("Claim approved successfully!");
+      setShowSuccessDialog(true);
       fetchItems();
       if (currentItemForClaims) handleSeeClaims(currentItemForClaims);
     } catch (err: any) {
       console.error(err);
-      alert("Failed to approve claim.");
+      setDialogMessage("Failed to approve claim.");
+      setShowErrorDialog(true);
     }
   };
 
@@ -154,18 +164,20 @@ export function AdminLostFoundPage() {
   const handleMarkReceived = async (claimId: number, studentId: number) => {
     try {
       await lostFoundAPI.markItemReceived(studentId, claimId);
-      alert("Item marked as received!");
-  
+      setDialogMessage("Item marked as received!");
+      setShowSuccessDialog(true);
+
       // Remove the corresponding item from the UI
       setItems((prev) =>
         prev.filter((item) => item.id !== (currentItemForClaims?.id ?? -1))
       );
-  
+
       // Close the claims modal
       setClaimsModalOpen(false);
     } catch (err: any) {
       console.error(err);
-      alert("Failed to mark item as received.");
+      setDialogMessage("Failed to mark item as received.");
+      setShowErrorDialog(true);
     }
   };
   
@@ -180,47 +192,70 @@ export function AdminLostFoundPage() {
       setClaimsModalOpen(true);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch claims.");
+      setDialogMessage("Failed to fetch claims.");
+      setShowErrorDialog(true);
     }
   };
 
   const handleViewDetails = (item: LostFoundItem) => {
     setSelectedItem(item);
+    setShowViewDialog(true);
   };
 
   const renderItemCard = (item: LostFoundItem) => (
     <Card
       key={item.id}
-      className={`hover:shadow-md transition-shadow ${
-        item.type === "Found" ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"
-      }`}
+      className="hover:shadow-md transition-all cursor-pointer border border-border"
     >
-      <CardHeader className="pb-2">
+      <CardContent className="pt-6 space-y-4">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg">{item.obj_name}</CardTitle>
-          <Badge className={item.type === "Found" ? "bg-blue-100 text-blue-800" : "bg-red-100 text-red-800"}>
-            {item.type}
+          <h3 className="text-lg font-semibold">{item.obj_name}</h3>
+          <Badge
+            variant="secondary"
+            className={item.status === "Claimed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}
+          >
+            {item.status || "Unclaimed"}
           </Badge>
         </div>
-        <CardDescription>{item.obj_description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
-        <p><span className="text-muted-foreground">Category:</span> {item.obj_type}</p>
-        <p><span className="text-muted-foreground">Trip ID:</span> {item.trip_id ?? "N/A"}</p>
-        {item.status && <p><span className="text-muted-foreground">Status:</span> {item.status}</p>}
-        {item.type === "Found" && (
-          <div className="flex gap-2 mt-3">
-            <Button size="sm" variant="outline" onClick={() => handleSeeClaims(item)}>
-              <Users className="w-4 h-4 mr-1" /> See Claims
-            </Button>
-          </div>
-        )}
-        <div className="flex gap-2 mt-3">
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleViewDetails(item)}>
-            <Eye className="w-4 h-4 mr-1" /> View
+
+        <p className="text-sm text-muted-foreground line-clamp-2">{item.obj_description}</p>
+
+        <div className="space-y-2 text-sm">
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">Location:</span> {item.trip_id ? `Shuttle Route ${item.trip_id}` : "N/A"}
+          </p>
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">Category:</span> {item.obj_type}
+          </p>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => handleViewDetails(item)}
+          >
+            <Eye className="w-4 h-4 mr-1" />
+            View
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => setItemToDelete(item)}>
-            <Trash2 className="w-4 h-4" /> Delete
+          {item.type === "Found" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleSeeClaims(item)}
+            >
+              <Users className="w-4 h-4 mr-1" />
+              Claims
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setItemToDelete(item)}
+          >
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>
@@ -231,7 +266,7 @@ export function AdminLostFoundPage() {
   const found = items.filter((i) => i.type === "Found");
 
   return (
-    <div className="p-6 space-y-10">
+    <div className="p-6 space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -248,19 +283,93 @@ export function AdminLostFoundPage() {
         </div>
       </div>
 
-      {/* Found Items */}
-      <section className="bg-blue-100/40 border border-blue-200 p-4 rounded-xl shadow-sm">
-        <h2 className="text-lg font-semibold mb-3 text-blue-900">Found Items</h2>
-        {found.length ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{found.map(renderItemCard)}</div> :
-          <p className="text-muted-foreground text-sm">No found items.</p>}
-      </section>
+      <div className="space-y-8">
+        {/* Found Items Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-12 bg-green-500 rounded-full"></div>
+              <div>
+                <h2 className="text-2xl font-bold">Found Items</h2>
+                <p className="text-sm text-muted-foreground">Items found and waiting to be claimed</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-base px-4 py-2 font-semibold">
+              {found.length} items
+            </Badge>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {found.length === 0 ? (
+              <Card className="col-span-full border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-base text-muted-foreground">No found items to display.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              found.map(renderItemCard)
+            )}
+          </div>
+        </section>
 
-      {/* Lost Items */}
-      <section className="bg-red-100/40 border border-red-200 p-4 rounded-xl shadow-sm">
-        <h2 className="text-lg font-semibold mb-3 text-red-900">Lost Items</h2>
-        {lost.length ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{lost.map(renderItemCard)}</div> :
-          <p className="text-muted-foreground text-sm">No lost items.</p>}
-      </section>
+        {/* Lost Items Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-12 bg-red-500 rounded-full"></div>
+              <div>
+                <h2 className="text-2xl font-bold">Lost Items</h2>
+                <p className="text-sm text-muted-foreground">Items reported as lost by passengers</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-base px-4 py-2 font-semibold">
+              {lost.length} items
+            </Badge>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {lost.length === 0 ? (
+              <Card className="col-span-full border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-base text-muted-foreground">No lost items reported yet.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              lost.map(renderItemCard)
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* View Item Dialog */}
+      {selectedItem && (
+        <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedItem.obj_name}</DialogTitle>
+              <DialogDescription>
+                {selectedItem.obj_description}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              <p>
+                <strong>Type:</strong> {selectedItem.obj_type}
+              </p>
+              <p>
+                <strong>Status:</strong> {selectedItem.status || "Unclaimed"}
+              </p>
+              {selectedItem.trip_id && (
+                <p>
+                  <strong>Trip ID:</strong> {selectedItem.trip_id}
+                </p>
+              )}
+              {selectedItem.date && (
+                <p>
+                  <strong>Date:</strong> {selectedItem.date}
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Claims Modal */}
       <Dialog open={claimsModalOpen} onOpenChange={setClaimsModalOpen}>
@@ -429,6 +538,36 @@ export function AdminLostFoundPage() {
               <Button onClick={handleReportFound}>Submit</Button>
               <Button variant="outline" onClick={() => setShowFoundDialog(false)}>Cancel</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Success!</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowSuccessDialog(false)}>
+              OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowErrorDialog(false)}>
+              OK
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

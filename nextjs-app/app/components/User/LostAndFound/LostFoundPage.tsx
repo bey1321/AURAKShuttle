@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Eye, Trash2, CheckCircle, Plus } from "lucide-react";
+import { Eye, Plus, Hand } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -38,6 +38,9 @@ export function LostFoundPage() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [reportType, setReportType] = useState<"Lost" | "Found">("Lost");
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState("");
   const [newItemData, setNewItemData] = useState({
     obj_name: "",
     obj_description: "",
@@ -83,11 +86,13 @@ export function LostFoundPage() {
       try {
         addNotification({ type: "info", message: `Claim submitted for ${item.obj_name}`, data: { itemId: item.id } });
       } catch {}
-      alert("✅ Claim made successfully!");
+      setDialogMessage("Claim made successfully!");
+      setShowSuccessDialog(true);
       fetchItems();
     } catch (err: any) {
       console.error("❌ Failed to make claim:", err);
-      alert(err?.message || "Failed to make claim. Please try again.");
+      setDialogMessage(err?.message || "Failed to make claim. Please try again.");
+      setShowErrorDialog(true);
     }
   };
 
@@ -125,7 +130,8 @@ export function LostFoundPage() {
           trip_id: newItemData.trip_id,
         });
       }
-      alert(`${reportType} item reported successfully!`);
+      setDialogMessage(`${reportType} item reported successfully!`);
+      setShowSuccessDialog(true);
       setShowReportDialog(false);
       setNewItemData({
         obj_name: "",
@@ -136,77 +142,61 @@ export function LostFoundPage() {
       fetchItems();
     } catch (err: any) {
       console.error("❌ Failed to report item:", err);
-      alert(err?.message || "Failed to report item. Please try again.");
+      setDialogMessage(err?.message || "Failed to report item. Please try again.");
+      setShowErrorDialog(true);
     }
   };
 
   const renderItemCard = (item: LostFoundItem) => (
     <Card
       key={item.id}
-      className={`hover:shadow-md transition-shadow ${
-        item.type === "Found"
-          ? "border-blue-200 bg-blue-50"
-          : "border-red-200 bg-red-50"
-      }`}
+      className="hover:shadow-md transition-all cursor-pointer border border-border"
     >
-      <CardHeader className="pb-2">
+      <CardContent className="pt-6 space-y-4">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg">{item.obj_name}</CardTitle>
+          <h3 className="text-lg font-semibold">{item.obj_name}</h3>
           <Badge
-            className={
-              item.type === "Found"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-red-100 text-red-800"
-            }
+            variant="secondary"
+            className={item.status === "Claimed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}
           >
-            {item.type}
+            {item.status || "Unclaimed"}
           </Badge>
         </div>
-        <CardDescription>{item.obj_description}</CardDescription>
-      </CardHeader>
 
-      <CardContent className="space-y-2 text-sm">
-        <p>
-          <span className="text-muted-foreground">Category:</span>{" "}
-          {item.obj_type}
-        </p>
-        <p>
-          <span className="text-muted-foreground">Trip ID:</span>{" "}
-          {item.trip_id ?? "N/A"}
-        </p>
-        {item.date && (
-          <p>
-            <span className="text-muted-foreground">Date:</span> {item.date}
+        <p className="text-sm text-muted-foreground line-clamp-2">{item.obj_description}</p>
+
+        <div className="space-y-2 text-sm">
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">Location:</span> {item.trip_id ? `Shuttle Route ${item.trip_id}` : "N/A"}
           </p>
-        )}
-        {item.status && (
-          <p>
-            <span className="text-muted-foreground">Status:</span> {item.status}
+          <p className="text-muted-foreground">
+            <span className="font-medium text-foreground">Reported by:</span> {item.type === "Found" ? "Driver" : "Passenger"}
           </p>
-        )}
+        </div>
 
-        {item.type === "Found" && (
-          <div className="flex gap-2 mt-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleApproveClaim(item)}
-            >
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Claim
-            </Button>
-          </div>
-        )}
-
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 pt-2">
           <Button
-            size="sm"
             variant="outline"
+            size="sm"
             className="flex-1"
             onClick={() => handleViewDetails(item)}
           >
-            <Eye className="w-4 h-4 mr-1" /> View
+            <Eye className="w-4 h-4 mr-1" />
+            View
           </Button>
+          {item.type === "Found" && (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleApproveClaim(item);
+              }}
+            >
+              <Hand className="w-4 h-4 mr-1" />
+              Claim
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -216,58 +206,89 @@ export function LostFoundPage() {
   const found = items.filter((i) => i.type === "Found");
 
   return (
-    <div className="p-6 space-y-10">
+    <div className="p-6 space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold">Admin Lost & Found</h1>
+          <h1 className="text-2xl font-semibold">Lost & Found</h1>
           <p className="text-muted-foreground">
-            Manage all reported lost and found items
+            View items and report lost or found items
           </p>
         </div>
         <div className="flex gap-2">
           <Button
-            size="sm"
+            onClick={() => handleOpenReportDialog("Found")}
+            size="lg"
+            className="gap-2"
             variant="outline"
-            onClick={() => handleOpenReportDialog("Lost")}
           >
-            <Plus className="w-4 h-4 mr-1" /> Report Lost Item
+            <Plus className="w-4 h-4" /> Report Found Item
           </Button>
           <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleOpenReportDialog("Found")}
+            onClick={() => handleOpenReportDialog("Lost")}
+            size="lg"
+            className="gap-2"
           >
-            <Plus className="w-4 h-4 mr-1" /> Report Found Item
+            <Plus className="w-4 h-4" /> Report Lost Item
           </Button>
         </div>
       </div>
 
-      {/* Found Items */}
-      <section className="bg-blue-100/40 border border-blue-200 p-4 rounded-xl shadow-sm">
-        <h2 className="text-lg font-semibold mb-3 text-blue-900">
-          Found Items
-        </h2>
-        {found.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {found.map(renderItemCard)}
+      <div className="space-y-8">
+        {/* Found Items Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-12 bg-green-500 rounded-full"></div>
+              <div>
+                <h2 className="text-2xl font-bold">Found Items</h2>
+                <p className="text-sm text-muted-foreground">Items found and waiting to be claimed</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-base px-4 py-2 font-semibold">
+              {found.length} items
+            </Badge>
           </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">No found items.</p>
-        )}
-      </section>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {found.length === 0 ? (
+              <Card className="col-span-full border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-base text-muted-foreground">No found items to display.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              found.map(renderItemCard)
+            )}
+          </div>
+        </section>
 
-      {/* Lost Items */}
-      <section className="bg-red-100/40 border border-red-200 p-4 rounded-xl shadow-sm">
-        <h2 className="text-lg font-semibold mb-3 text-red-900">Lost Items</h2>
-        {lost.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {lost.map(renderItemCard)}
+        {/* Lost Items Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-12 bg-red-500 rounded-full"></div>
+              <div>
+                <h2 className="text-2xl font-bold">Lost Items</h2>
+                <p className="text-sm text-muted-foreground">Items reported as lost by passengers</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-base px-4 py-2 font-semibold">
+              {lost.length} items
+            </Badge>
           </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">No lost items.</p>
-        )}
-      </section>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {lost.length === 0 ? (
+              <Card className="col-span-full border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-base text-muted-foreground">No lost items reported yet.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              lost.map(renderItemCard)
+            )}
+          </div>
+        </section>
+      </div>
 
       {/* Item Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
@@ -392,6 +413,36 @@ export function LostFoundPage() {
               </Button>
               <Button onClick={handleReportSubmit}>Submit</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Success!</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowSuccessDialog(false)}>
+              OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{dialogMessage}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowErrorDialog(false)}>
+              OK
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

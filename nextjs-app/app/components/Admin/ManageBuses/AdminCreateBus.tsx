@@ -60,22 +60,22 @@ export default function AdminCreateBus() {
 
         setBuses(mappedBuses);
         
-        // Load trip counts for each bus
-        const counts: {[key: number]: number} = {};
-        await Promise.all(
-          mappedBuses.map(async (bus) => {
-            try {
-              const trips = await adminAPI.getBusTrips(bus.busID);
-              console.log(`Bus ${bus.busID} (${bus.plate_num}) trips:`, trips);
-              counts[bus.busID] = Array.isArray(trips) ? trips.length : 0;
-            } catch (err) {
-              console.error(`Failed to load trips for bus ${bus.busID}:`, err);
-              counts[bus.busID] = 0;
-            }
-          })
-        );
-        console.log('Final trip counts:', counts);
-        setBusTripCounts(counts);
+        // // Load trip counts for each bus
+        // const counts: {[key: number]: number} = {};
+        // await Promise.all(
+        //   mappedBuses.map(async (bus) => {
+        //     try {
+        //       const trips = await adminAPI.getBusTrips(bus.busID);
+        //       console.log(`Bus ${bus.busID} (${bus.plate_num}) trips:`, trips);
+        //       counts[bus.busID] = Array.isArray(trips) ? trips.length : 0;
+        //     } catch (err) {
+        //       console.error(`Failed to load trips for bus ${bus.busID}:`, err);
+        //       counts[bus.busID] = 0;
+        //     }
+        //   })
+        // );
+        // console.log('Final trip counts:', counts);
+        // setBusTripCounts(counts);
       } catch (err: any) {
         console.error(err);
         alert(err?.message || "Server error while fetching buses");
@@ -217,8 +217,7 @@ export default function AdminCreateBus() {
                 <TableHead>Model</TableHead>
                 <TableHead>Manufacturer</TableHead>
                 <TableHead>Seats</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assigned Trips</TableHead>
+                <TableHead>Status</TableHead>                
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -235,15 +234,6 @@ export default function AdminCreateBus() {
                       variant={bus.status === "Active" ? "default" : "outline"}
                     >
                       {bus.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                      onClick={() => handleViewBusTrips(bus)}
-                    >
-                      {busTripCounts[bus.busID] ?? 0} trips
                     </Badge>
                   </TableCell>
                   <TableCell className="flex gap-2">

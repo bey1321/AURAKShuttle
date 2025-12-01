@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { MapPin, Bus, Clock, Navigation, AlertCircle } from "lucide-react";
 import {
   Card,
@@ -13,9 +14,12 @@ import {
   AlertDescription,
 } from "../ui";
 import { useGPSWebSocket, LocationData } from "../../hooks/useGPSWebSocket";
-import { LiveTrackingMap } from "./LiveTrackingMap";
-import { WebSocketDebugPanel } from "./WebSocketDebugPanel";
-import { NetworkDebugPanel } from "./NetworkDebugPanel";
+
+// Dynamically import LiveTrackingMap to avoid SSR issues with Leaflet
+const LiveTrackingMap = dynamic(
+  () => import("./LiveTrackingMap").then((mod) => mod.LiveTrackingMap),
+  { ssr: false }
+);
 
 interface StudentGPSComponentProps {
   tripId: number;
@@ -30,6 +34,8 @@ export function StudentGPSComponent({
 }: StudentGPSComponentProps) {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  const [userFriendlyError, setUserFriendlyError] = useState<string | null>(null);
 
   const { isConnected, connectionStatus, lastError, sendMessage, connect } =
     useGPSWebSocket({
@@ -73,18 +79,46 @@ export function StudentGPSComponent({
 
           setLastUpdate(new Date());
           onLocationUpdate?.(locationData);
+          // Clear error on successful message
+          setUserFriendlyError(null);
         }
       },
       onError: (error) => {
         console.error("GPS WebSocket error:", error);
+        // Convert technical errors to user-friendly messages
+        if (error.includes("not active") || error.includes("not in progress")) {
+          setUserFriendlyError("This trip hasn't started yet. Live tracking will be available once the driver starts the trip.");
+        } else if (error.includes("completed")) {
+          setUserFriendlyError("This trip has already been completed. Live tracking is no longer available.");
+        } else if (error.includes("not found")) {
+          setUserFriendlyError("We couldn't find this trip. Please check your trip selection and try again.");
+        } else if (error.includes("not registered")) {
+          setUserFriendlyError("You're not registered for this trip. Please contact support if you believe this is an error.");
+        } else if (error.includes("Authentication")) {
+          setUserFriendlyError("Your session has expired. Please log in again to continue tracking.");
+        } else if (error.includes("Failed to parse")) {
+          // Don't show parse errors to users - they're technical issues
+          console.error("Parse error details:", error);
+          setUserFriendlyError("Unable to connect to live tracking. Please refresh the page and try again.");
+        } else {
+          setUserFriendlyError(error);
+        }
       },
     });
 
   const formatTime = (dateString: string) => {
     try {
-      // Handle UTC timestamps by appending 'Z' if not present
-      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-      const date = new Date(utcDateString);
+      // Handle different timestamp formats
+      // Replace timezone offset (+00:00) with Z for UTC, or just parse as-is
+      let cleanDateString = dateString;
+      if (dateString.includes('+00:00')) {
+        cleanDateString = dateString.replace('+00:00', 'Z');
+      } else if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // Only append Z if there's no timezone info
+        cleanDateString = `${dateString}Z`;
+      }
+
+      const date = new Date(cleanDateString);
 
       // Check if date is valid
       if (isNaN(date.getTime())) {
@@ -105,9 +139,17 @@ export function StudentGPSComponent({
 
   const getTimeAgo = (dateString: string) => {
     try {
-      // Handle UTC timestamps by appending 'Z' if not present
-      const utcDateString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-      const date = new Date(utcDateString);
+      // Handle different timestamp formats
+      // Replace timezone offset (+00:00) with Z for UTC, or just parse as-is
+      let cleanDateString = dateString;
+      if (dateString.includes('+00:00')) {
+        cleanDateString = dateString.replace('+00:00', 'Z');
+      } else if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
+        // Only append Z if there's no timezone info
+        cleanDateString = `${dateString}Z`;
+      }
+
+      const date = new Date(cleanDateString);
 
       // Check if date is valid
       if (isNaN(date.getTime())) {
@@ -167,14 +209,48 @@ export function StudentGPSComponent({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {lastError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{lastError}</AlertDescription>
-          </Alert>
+        {/* Show prominent error message when trip hasn't started */}
+        {(userFriendlyError || lastError) && (
+          <div className={`rounded-lg border-2 p-6 ${
+            userFriendlyError?.includes("hasn't started yet")
+              ? "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
+              : "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800"
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className={`rounded-full p-2 ${
+                userFriendlyError?.includes("hasn't started yet")
+                  ? "bg-blue-100 dark:bg-blue-900"
+                  : "bg-red-100 dark:bg-red-900"
+              }`}>
+                <AlertCircle className={`h-5 w-5 ${
+                  userFriendlyError?.includes("hasn't started yet")
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-red-600 dark:text-red-400"
+                }`} />
+              </div>
+              <div className="flex-1">
+                <h3 className={`font-semibold mb-1 ${
+                  userFriendlyError?.includes("hasn't started yet")
+                    ? "text-blue-900 dark:text-blue-100"
+                    : "text-red-900 dark:text-red-100"
+                }`}>
+                  {userFriendlyError?.includes("hasn't started yet")
+                    ? "Trip Not Active"
+                    : "Connection Error"}
+                </h3>
+                <p className={`text-sm ${
+                  userFriendlyError?.includes("hasn't started yet")
+                    ? "text-blue-700 dark:text-blue-300"
+                    : "text-red-700 dark:text-red-300"
+                }`}>
+                  {userFriendlyError || lastError}
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
-        {!isConnected && connectionStatus === "connecting" && (
+        {!isConnected && connectionStatus === "connecting" && !userFriendlyError && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>Connecting to GPS service...</AlertDescription>
@@ -235,7 +311,7 @@ export function StudentGPSComponent({
               </div>
             </div>
           </div>
-        ) : (
+        ) : !userFriendlyError && !lastError ? (
           <div className="text-center py-8">
             <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
@@ -244,20 +320,7 @@ export function StudentGPSComponent({
                 : "Not connected. Please wait..."}
             </p>
           </div>
-        )}
-
-        {/* Debug Panel - Shows connection diagnostics */}
-        <div className="mt-4">
-          <WebSocketDebugPanel
-            isConnected={isConnected}
-            connectionStatus={connectionStatus}
-            lastError={lastError}
-            onRetry={connect}
-          />
-        </div>
-
-        {/* Network Debug Panel - Shows detailed logs */}
-        <NetworkDebugPanel />
+        ) : null}
       </CardContent>
     </Card>
   );

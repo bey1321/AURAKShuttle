@@ -7,7 +7,7 @@ import { AdminManageTrips } from "../components/Admin/ManageTrips/AdminManageTri
 import { AdminManageDrivers } from "../components/Admin/ManageDrivers/AdminManageDrivers";
 import { AdminManageUsers } from "../components/Admin/ManageUsers/AdminManageUsers";
 import AdminCreateBus from "../components/Admin/ManageBuses/AdminCreateBus";
-import { RealTimeTracking } from "../components/RealTimeTracking";
+// import { RealTimeTracking } from "../components/RealTimeTracking";
 import { useState } from "react";
 
 export default function AdminPage() {
@@ -25,8 +25,8 @@ export default function AdminPage() {
         return <AdminManageUsers />;
       case "manage-drivers":
         return <AdminManageDrivers />;
-      case "tracking":
-        return <RealTimeTracking />;
+      // case "tracking":
+      //   return <RealTimeTracking />;
       case "admin-lost-found":
         return <AdminLostFoundPage />;
       default:

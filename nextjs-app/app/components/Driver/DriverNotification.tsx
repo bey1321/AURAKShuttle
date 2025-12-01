@@ -10,6 +10,11 @@ import {
   Button,
   Label,
   Textarea,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "../ui";
 import { Send, Bell, CheckCircle2, AlertCircle } from "lucide-react";
 import { driverAPI } from "../../lib/api";
@@ -68,14 +73,19 @@ export function DriverNotification({ trips }: DriverNotificationProps) {
     recipients?: number;
   } | null>(null);
 
-  // Filter trips to only show today's and upcoming trips
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Filter trips to only show upcoming trips (from today onwards)
+  const today = new Date().toISOString().split('T')[0];
 
   const availableTrips = trips.filter((trip) => {
-    const tripDate = new Date(trip.date);
-    tripDate.setHours(0, 0, 0, 0);
+    const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
     return tripDate >= today && trip.status !== "completed";
+  });
+
+  // Sort by date in ascending order (earliest first)
+  availableTrips.sort((a, b) => {
+    const dateA = new Date(a.date || "").getTime();
+    const dateB = new Date(b.date || "").getTime();
+    return dateA - dateB;
   });
 
   const selectedTrip = availableTrips.find((t) => t.id === selectedTripId);
@@ -146,22 +156,46 @@ export function DriverNotification({ trips }: DriverNotificationProps) {
         {/* Trip Selection */}
         <div className="space-y-2">
           <Label htmlFor="trip-select">Select Trip</Label>
-          <select
-            id="trip-select"
-            className="w-full p-2 border border-border rounded-md bg-background"
-            value={selectedTripId || ""}
-            onChange={(e) => setSelectedTripId(Number(e.target.value) || null)}
-          >
-            <option value="">-- Select a trip --</option>
-            {availableTrips.map((trip) => (
-              <option key={trip.id} value={trip.id}>
-                {trip.route?.name || "Unknown Route"} - {new Date(trip.date).toLocaleDateString()}
-                {trip.route?.start_time && ` (${trip.route.start_time})`}
-              </option>
-            ))}
-          </select>
-          {availableTrips.length === 0 && (
-            <p className="text-sm text-muted-foreground">No upcoming trips available</p>
+          {availableTrips.length === 0 ? (
+            <div className="w-full p-4 border border-dashed border-border rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">No upcoming trips available</p>
+            </div>
+          ) : (
+            <Select
+              value={selectedTripId?.toString() || ""}
+              onValueChange={(value) => setSelectedTripId(value ? Number(value) : null)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="-- Select a trip --" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTrips.map((trip) => {
+                  const tripDate = new Date(trip.date).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  });
+                  const timeInfo = trip.route?.start_time
+                    ? ` • ${trip.route.start_time}`
+                    : '';
+                  const busInfo = trip.bus?.plate_num
+                    ? ` • ${trip.bus.plate_num}`
+                    : '';
+
+                  return (
+                    <SelectItem key={trip.id} value={trip.id.toString()}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{trip.route?.name || "Unknown Route"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {tripDate}{timeInfo}{busInfo}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           )}
         </div>
 

@@ -211,7 +211,10 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
         ).first()
         
         if route_registration:
-            return {'message':'You are already registered for this route for the semester. No need to reserve individual trips.' }
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='You are already registered for this route for the semester. No need to reserve individual trips.'
+            )
             
         
         # Check if user already reserved this specific trip
@@ -222,7 +225,10 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
         ).first()
         
         if existing_reservation:
-            return {'message': 'You have already reserved a seat for this trip'}
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='You have already reserved a seat for this trip'
+            )
             
         
         total_seats = trip.bus.no_seats
@@ -267,12 +273,16 @@ async def reserve_seat(trip_id: int, db: db_dependency, user = Depends(get_user)
             'total_seats': total_seats
         }
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 400, 404) without modification
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         print(f"Error reserving seat: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f'Internal Server Error {str(e)}'
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Internal Server Error: {str(e)}'
         )
     
 @router.delete('/cancel_reservation/{trip_id}', status_code=status.HTTP_200_OK)
@@ -329,8 +339,22 @@ def get_my_reviews(
         if not reviews:
             return []
 
-        # Return the list directly, not wrapped in a dict
-        return reviews
+        # Return reviews with route/trip information
+        result = []
+        for review in reviews:
+            review_data = {
+                "id": review.id,
+                "trip_id": review.trip_id,
+                "route_name": review.trip.route.name if review.trip and review.trip.route else None,
+                "trip_date": review.trip.date if review.trip else None,
+                "cleanliness": review.cleanliness,
+                "driver_rating": review.driver_rating,
+                "timeliness": review.timeliness,
+                "comment": review.comment,
+            }
+            result.append(review_data)
+
+        return result
 
     except Exception as e:
         raise HTTPException(

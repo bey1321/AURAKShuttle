@@ -59,11 +59,12 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
         // Use the user's trips endpoint per request
         // This will fetch the user's trips (past & reserved) for selection
         const trips = await tripAPI.getMyTrips();
-        // Optional: only include past trips if needed
-        const today = new Date();
-        const filteredTrips = trips.filter(
-          (trip: any) => new Date(trip.date) < today
-        );
+        // Only include past trips (previous trips, not upcoming)
+        const today = new Date().toISOString().split('T')[0];
+        const filteredTrips = trips.filter((trip: any) => {
+          const tripDate = trip.date ? (typeof trip.date === 'string' ? trip.date.split('T')[0] : trip.date) : '';
+          return tripDate < today;
+        });
         setRecentTrips(filteredTrips);
       } catch (error) {
         console.error("Error fetching trips:", error);
@@ -190,7 +191,7 @@ export default function NewFeedbackForm({ onSubmit }: Props) {
               ) : (
                 recentTrips.map((trip) => (
                   <SelectItem key={trip.id} value={trip.id.toString()}>
-                    {trip.route_name} • {trip.date}
+                    {trip.route_name || trip.route?.name || "Unknown Route"} • {trip.date} • {trip.start_time || trip.route?.start_time || "N/A"} - {trip.end_time || trip.route?.end_time || "N/A"}
                   </SelectItem>
                 ))
               )}
